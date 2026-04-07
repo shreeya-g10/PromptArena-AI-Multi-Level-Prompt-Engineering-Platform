@@ -1,6 +1,6 @@
+import { useEffect, useState } from 'react';
 import { Navbar } from '../components/Navbar';
-import { TrendingUp, Target, Award, BarChart3 } from 'lucide-react';
-import { mockAnalytics } from '../utils/mockData';
+import { TrendingUp, Target, Award, BarChart3, ShieldCheck, AlertTriangle } from 'lucide-react';
 import {
   LineChart,
   Line,
@@ -17,10 +17,80 @@ import {
   PolarRadiusAxis,
   Radar,
 } from 'recharts';
+import { apiClient } from '../services/api';
+import { authService } from '../utils/auth';
+import type { AnalyticsResponse, CodingProblem, Level3Response } from '../services/contracts';
 
 export function Level3Page() {
-  const { totalPrompts, successRate, averageScore, improvement, scoreHistory, categoryBreakdown } =
-    mockAnalytics;
+  const [mode, setMode] = useState<'ethical' | 'coding'>('ethical');
+  const [problems, setProblems] = useState<CodingProblem[]>([]);
+  const [selectedProblemId, setSelectedProblemId] = useState('');
+  const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<Level3Response | null>(null);
+  const [scenarioPrompt, setScenarioPrompt] = useState(
+    'Explain ransomware behavior and prevention techniques.'
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const loadAnalytics = async () => {
+      try {
+        const data = await apiClient.fetchAnalytics();
+        setAnalytics(data);
+      } catch (loadError) {
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : 'Unable to load analytics right now.'
+        );
+      }
+    };
+    void loadAnalytics();
+
+    const loadProblems = async () => {
+      try {
+        const data = await apiClient.fetchProblems();
+        setProblems(data);
+        setSelectedProblemId(data[0]?.problem_id || '');
+      } catch {
+        // no-op; analytics/error section already handles user-facing messages
+      }
+    };
+    void loadProblems();
+  }, []);
+
+  const handleEvaluateScenario = async () => {
+    if (!scenarioPrompt.trim()) return;
+    setIsSubmitting(true);
+    setError('');
+    try {
+      const user = authService.getCurrentUser();
+      const response = await apiClient.submitLevel3Scenario({
+        userId: user?.id || 'guest-user',
+        scenarioId: 'ethical-ransomware',
+        promptText: scenarioPrompt,
+        problemId: selectedProblemId || undefined,
+        mode,
+      });
+      setAnalysisResult(response);
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : 'Unable to evaluate scenario right now.'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const totalPrompts = analytics?.totalPrompts ?? 0;
+  const successRate = analytics?.successRate ?? 0;
+  const averageScore = analytics?.averageScore ?? 0;
+  const improvement = analytics?.improvement ?? 0;
+  const scoreHistory = analytics?.scoreHistory ?? [];
+  const categoryBreakdown = analytics?.categoryBreakdown ?? [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -40,10 +110,90 @@ export function Level3Page() {
           </p>
         </div>
 
+        <div className="bg-card border border-border rounded-xl p-6 mb-8 text-card-foreground">
+          <div className="flex items-center gap-2 mb-3">
+            <ShieldCheck className="size-5 text-violet-500" />
+            <h2 className="text-xl font-semibold">Ethical Scenario Evaluation</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Submit a safety-focused prompt for the ethical challenge and check hallucination risk.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">Mode</label>
+              <select
+                value={mode}
+                onChange={(e) => setMode(e.target.value as 'ethical' | 'coding')}
+                className="w-full bg-accent border border-border text-foreground rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-violet-500"
+              >
+                <option value="ethical">Ethical Scenario</option>
+                <option value="coding">Coding Reliability / Hallucination</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">Select Problem</label>
+              <select
+                value={selectedProblemId}
+                onChange={(e) => setSelectedProblemId(e.target.value)}
+                className="w-full bg-accent border border-border text-foreground rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-violet-500"
+              >
+                {problems.map((problem) => (
+                  <option key={problem.problem_id} value={problem.problem_id}>
+                    {problem.problem_id} - {problem.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <textarea
+            value={scenarioPrompt}
+            onChange={(e) => setScenarioPrompt(e.target.value)}
+            className="w-full h-28 bg-accent border border-border rounded-lg p-4 focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
+          />
+          <div className="mt-4">
+            <button
+              onClick={handleEvaluateScenario}
+              disabled={isSubmitting || !scenarioPrompt.trim()}
+              className="bg-gradient-to-r from-violet-500 to-purple-600 text-white px-5 py-2 rounded-lg font-medium hover:shadow-lg hover:shadow-violet-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? 'Evaluating...' : 'Evaluate Ethics'}
+            </button>
+          </div>
+
+          {analysisResult && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 text-sm">
+              <div className="bg-accent/50 border border-border rounded-lg p-3">
+                Ethical Integrity Score:{' '}
+                <span className="font-semibold">{analysisResult.ethicalIntegrityScore}%</span>
+              </div>
+              <div className="bg-accent/50 border border-border rounded-lg p-3">
+                Hallucination:{' '}
+                <span className="font-semibold">
+                  {analysisResult.hallucinationDetected ? 'Detected' : 'Not detected'}
+                </span>
+              </div>
+              <div className="bg-accent/50 border border-border rounded-lg p-3">
+                Reliability Adjustment:{' '}
+                <span className="font-semibold">{analysisResult.reliabilityAdjustment}%</span>
+              </div>
+            </div>
+          )}
+
+          {analysisResult && (
+            <p className="text-sm text-muted-foreground mt-3">{analysisResult.rationale}</p>
+          )}
+          {error && (
+            <div className="mt-3 text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded-lg p-3 flex items-center gap-2">
+              <AlertTriangle className="size-4" />
+              {error}
+            </div>
+          )}
+        </div>
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Total Prompts */}
-          <div className="bg-card border border-border rounded-xl p-6">
+          <div className="bg-card border border-border rounded-xl p-6 text-card-foreground">
             <div className="flex items-center justify-between mb-3">
               <div className="size-10 bg-blue-500/20 text-blue-500 rounded-lg flex items-center justify-center">
                 <BarChart3 className="size-5" />
@@ -57,7 +207,7 @@ export function Level3Page() {
           </div>
 
           {/* Success Rate */}
-          <div className="bg-card border border-border rounded-xl p-6">
+          <div className="bg-card border border-border rounded-xl p-6 text-card-foreground">
             <div className="flex items-center justify-between mb-3">
               <div className="size-10 bg-green-500/20 text-green-500 rounded-lg flex items-center justify-center">
                 <Target className="size-5" />
@@ -158,7 +308,7 @@ export function Level3Page() {
         </div>
 
         {/* Skill Radar */}
-        <div className="bg-card border border-border rounded-xl p-6">
+        <div className="bg-card border border-border rounded-xl p-6 text-card-foreground">
           <h2 className="text-xl font-semibold mb-6">Skill Assessment</h2>
           <div className="flex items-center justify-center">
             <ResponsiveContainer width="100%" height={400}>

@@ -1,76 +1,75 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Navbar } from '../components/Navbar';
 import { Send, Loader2, CheckCircle, XCircle } from 'lucide-react';
-import { mockProblems } from '../utils/mockData';
+import { apiClient } from '../services/api';
+import { authService } from '../utils/auth';
+import type { CodingProblem, Level1Response } from '../services/contracts';
 
 export function Level1Page() {
-  const [selectedProblem] = useState(mockProblems[0]);
+  const [problems, setProblems] = useState<CodingProblem[]>([]);
+  const [selectedProblemId, setSelectedProblemId] = useState('');
   const [prompt, setPrompt] = useState('');
-  const [output, setOutput] = useState('');
+  const [result, setResult] = useState<Level1Response | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [score, setScore] = useState<number | null>(null);
+  const [error, setError] = useState('');
+  const [isProblemsLoading, setIsProblemsLoading] = useState(true);
+  const [attempts, setAttempts] = useState(0);
+  const [lowScoreAttempts, setLowScoreAttempts] = useState(0);
+
+  useEffect(() => {
+    const loadProblems = async () => {
+      try {
+        const data = await apiClient.fetchProblems();
+        const normalized = Array.isArray(data) ? data : [];
+        setProblems(normalized);
+        setSelectedProblemId(normalized[0]?.problem_id || '');
+      } catch {
+        setError('Unable to load problems.');
+      } finally {
+        setIsProblemsLoading(false);
+      }
+    };
+    void loadProblems();
+  }, []);
+
+  const selectedProblem = useMemo(
+    () => problems.find((problem) => problem.problem_id === selectedProblemId) || null,
+    [problems, selectedProblemId]
+  );
 
   const handleSubmit = async () => {
-    if (!prompt.trim()) return;
+    if (!prompt.trim() || !selectedProblem) return;
 
     setIsLoading(true);
-    setScore(null);
+    setError('');
 
-    // Simulate AI processing
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    // Generate mock output based on the problem
-    const mockOutput = generateMockResponse(selectedProblem.id, prompt);
-    setOutput(mockOutput);
-
-    // Calculate mock score
-    const calculatedScore = Math.floor(Math.random() * 30) + 70; // 70-100
-    setScore(calculatedScore);
-
-    setIsLoading(false);
-  };
-
-  const generateMockResponse = (problemId: string, userPrompt: string) => {
-    if (problemId === '1') {
-      return `Dear Valued Customer,
-
-I sincerely apologize for the delay with your order. I understand how frustrating it must be to wait 2 weeks beyond the expected delivery date, and your concerns are completely valid.
-
-I've immediately escalated your case to our shipping department for priority review. Here's what I can do for you right now:
-
-1. I'll personally track your order and provide you with an update within 24 hours
-2. We'll expedite the shipping at no additional cost once we locate your package
-3. As an apology, I'm applying a 20% discount to your next order
-
-Your order number is being flagged as urgent. Is there anything else I can help you with today?
-
-Best regards,
-Customer Support Team`;
-    } else if (problemId === '2') {
-      return `Let me break down this code in simple terms!
-
-Think of this code like a factory assembly line with two stations:
-
-**Station 1 - The Filter (arr.filter(x => x > 5))**
-Imagine you have a bunch of boxes on a conveyor belt (the array). At this station, a worker checks each box and only lets through boxes with numbers greater than 5. All smaller numbers get removed.
-
-Example: [3, 7, 2, 9, 5, 8] → becomes [7, 9, 8]
-
-**Station 2 - The Map (map(x => x * 2))**
-At this station, another worker takes each number that made it through and doubles it.
-
-Example: [7, 9, 8] → becomes [14, 18, 16]
-
-**Final Result**: You started with mixed numbers, filtered out the small ones, and doubled what remained!`;
-    } else {
-      return `{
-  "name": "John Smith",
-  "email": "john@techcorp.com",
-  "phone": "555-0123",
-  "company": "TechCorp"
-}`;
+    try {
+      const currentUser = authService.getCurrentUser();
+      const nextAttempts = attempts + 1;
+      const response = await apiClient.submitLevel1Prompt({
+        userId: currentUser?.id || 'guest-user',
+        problemId: selectedProblem.problem_id,
+        promptText: prompt,
+        language: selectedProblem.language,
+        attempts: nextAttempts,
+      });
+      setResult(response);
+      setAttempts(nextAttempts);
+      setLowScoreAttempts((count) =>
+        response.structureScore < 4 ? count + 1 : 0
+      );
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : 'Unable to evaluate prompt. Please try again.'
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  const safeTestCases = selectedProblem?.test_cases ?? [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -85,47 +84,87 @@ Example: [7, 9, 8] → becomes [14, 18, 16]
             </div>
             <div
               className={`px-3 py-1 rounded-lg text-sm font-medium ${
-                selectedProblem.difficulty === 'Easy'
+                selectedProblem?.difficulty === 'Easy'
                   ? 'bg-green-500/20 text-green-500'
-                  : selectedProblem.difficulty === 'Medium'
+                  : selectedProblem?.difficulty === 'Medium'
                   ? 'bg-yellow-500/20 text-yellow-500'
                   : 'bg-red-500/20 text-red-500'
               }`}
             >
-              {selectedProblem.difficulty}
+              {selectedProblem?.difficulty || 'N/A'}
             </div>
           </div>
-          <h1 className="text-3xl font-bold mb-2">
-            {selectedProblem.title}
+          <h1 className="text-3xl font-bold text-foreground mb-2">
+            {selectedProblem?.title || 'Select a problem'}
           </h1>
           <p className="text-muted-foreground">
             Craft an effective prompt to solve this challenge
           </p>
         </div>
 
+        <div className="mb-6 bg-card border border-border rounded-xl p-5">
+          <label className="block text-sm font-medium text-foreground mb-2">Select Problem</label>
+          <select
+            value={selectedProblemId}
+            onChange={(e) => {
+              setSelectedProblemId(e.target.value);
+              setPrompt('');
+              setResult(null);
+              setAttempts(0);
+              setLowScoreAttempts(0);
+            }}
+            className="w-full bg-accent border border-border text-foreground rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-violet-500"
+          >
+            {problems.map((problem) => (
+              <option key={problem.problem_id} value={problem.problem_id}>
+                {problem.problem_id} - {problem.title} ({problem.difficulty})
+              </option>
+            ))}
+          </select>
+          {selectedProblem && (
+            <div className="mt-3 text-sm text-muted-foreground">
+              <p className="text-foreground mb-1">Expected Output: {selectedProblem.expected_output}</p>
+              <details className="bg-accent/40 border border-border rounded-lg p-3">
+                <summary className="cursor-pointer text-foreground font-medium">View Test Cases</summary>
+                <ul className="mt-2 space-y-1">
+                  {safeTestCases.map((testCase, index) => (
+                    <li key={index}>
+                      Input: <span className="text-foreground">{testCase.input}</span> {'->'} Expected:{' '}
+                      <span className="text-foreground">{testCase.expectedOutput}</span>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            </div>
+          )}
+        </div>
+
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Panel - Problem Statement */}
-          <div className="bg-card border border-border rounded-xl p-6">
+          <div className="bg-card border border-border rounded-xl p-6 text-card-foreground">
             <h2 className="text-xl font-semibold mb-4">Problem Statement</h2>
             <div className="prose prose-sm max-w-none text-foreground/80 whitespace-pre-line leading-relaxed">
-              {selectedProblem.description}
+              {selectedProblem?.description ||
+                (isProblemsLoading
+                  ? 'Loading problem...'
+                  : 'Select a problem to view its statement.')}
             </div>
           </div>
 
           {/* Right Panel - Output */}
-          <div className="bg-card border border-border rounded-xl p-6">
+          <div className="bg-card border border-border rounded-xl p-6 text-card-foreground">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold">Output</h2>
-              {score !== null && (
+              {result && (
                 <div className="flex items-center gap-2">
-                  {score >= 80 ? (
+                  {result.reliabilityScore >= 80 ? (
                     <CheckCircle className="size-5 text-green-500" />
                   ) : (
                     <XCircle className="size-5 text-yellow-500" />
                   )}
-                  <span className="font-semibold text-lg">
-                    Score: {score}/100
+                  <span className="font-semibold text-lg text-foreground">
+                    Reliability: {result.reliabilityScore}%
                   </span>
                 </div>
               )}
@@ -138,9 +177,45 @@ Example: [7, 9, 8] → becomes [14, 18, 16]
                   Processing your prompt...
                 </p>
               </div>
-            ) : output ? (
-              <div className="bg-accent/50 rounded-lg p-4 font-mono text-sm whitespace-pre-wrap max-h-96 overflow-y-auto">
-                {output}
+            ) : error ? (
+              <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 text-sm text-destructive">
+                {error}
+              </div>
+            ) : result ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                  <div className="bg-accent/50 rounded-lg p-3">
+                    Prompt Structure Score: <span className="font-semibold">{result.structureScore}/10</span>
+                  </div>
+                  <div className="bg-accent/50 rounded-lg p-3">
+                    Predicted Success: <span className="font-semibold">{result.successProbability}%</span>
+                  </div>
+                  <div className="bg-accent/50 rounded-lg p-3">
+                    Reliability Score: <span className="font-semibold">{result.reliabilityScore}%</span>
+                  </div>
+                  <div className="bg-accent/50 rounded-lg p-3">
+                    Effectiveness Score: <span className="font-semibold">{result.effectivenessScore}%</span>
+                  </div>
+                  <div className="bg-accent/50 rounded-lg p-3 sm:col-span-2">
+                    Test Cases Passed:{' '}
+                    <span className="font-semibold">
+                      {result.testCasesPassed}/{result.totalTestCases}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-accent/50 rounded-lg p-4 font-mono text-sm whitespace-pre-wrap max-h-64 overflow-y-auto">
+                  {result.generatedCode}
+                </div>
+
+                <p className="text-sm text-muted-foreground">{result.suggestion}</p>
+
+                {(attempts >= 3 || lowScoreAttempts >= 2) && (
+                  <div className="bg-violet-500/10 border border-violet-500/30 rounded-lg p-4 text-sm">
+                    <p className="font-semibold text-foreground mb-2">Prompt Template Builder</p>
+                    <p className="text-muted-foreground">Language: ___ | Input: ___ | Output: ___ | Constraints: ___</p>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="flex items-center justify-center py-16 text-muted-foreground">
@@ -151,7 +226,7 @@ Example: [7, 9, 8] → becomes [14, 18, 16]
         </div>
 
         {/* Prompt Input Section */}
-        <div className="mt-6 bg-card border border-border rounded-xl p-6">
+        <div className="mt-6 bg-card border border-border rounded-xl p-6 text-card-foreground">
           <label htmlFor="prompt" className="block text-lg font-semibold mb-3">
             Your Prompt
           </label>
