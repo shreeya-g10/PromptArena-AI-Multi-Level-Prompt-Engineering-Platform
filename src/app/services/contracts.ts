@@ -65,6 +65,8 @@ export interface Level2Response {
   evolutionHistory: PromptVersion[];
   reliabilityScore: number;
   efficiencyIndex: number;
+  problemRelevanceScore?: number;
+  relevanceNotes?: string[];
   feedback: string[];
   comparison: PromptComparison;
 }

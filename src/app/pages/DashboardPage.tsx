@@ -5,6 +5,7 @@ import { Trophy, Zap, Target, TrendingUp } from 'lucide-react';
 import { authService } from '../utils/auth';
 import { apiClient } from '../services/api';
 import type { LeaderboardEntry } from '../services/contracts';
+import { getProgress } from '../utils/progress';
 
 const levels = [
   {
@@ -38,6 +39,7 @@ export function DashboardPage() {
   const currentUser = authService.getCurrentUser();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [leaderboardError, setLeaderboardError] = useState('');
+  const [progress, setProgress] = useState(getProgress());
 
   useEffect(() => {
     const loadLeaderboard = async () => {
@@ -53,7 +55,14 @@ export function DashboardPage() {
       }
     };
     void loadLeaderboard();
+    setProgress(getProgress());
   }, []);
+
+  const levelStatusText = (levelId: number) => {
+    if (levelId === 1) return progress.level1Completed ? 'Completed' : 'Available';
+    if (levelId === 2) return progress.level2Completed ? 'Completed' : 'Available';
+    return progress.level3Completed ? 'Completed' : 'Available';
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -82,6 +91,9 @@ export function DashboardPage() {
                   onClick={() => navigate(level.path)}
                   className="group relative bg-card border border-border rounded-2xl p-8 text-card-foreground hover:shadow-xl hover:shadow-violet-500/10 transition-all hover:-translate-y-1 text-left"
                 >
+                  <div className="absolute top-4 right-4 text-xs px-2 py-1 rounded bg-accent/70 text-foreground">
+                    {levelStatusText(level.id)}
+                  </div>
                   <div
                     className={`inline-flex items-center justify-center size-14 bg-gradient-to-br ${level.color} rounded-xl mb-5 shadow-lg group-hover:scale-110 transition-transform`}
                   >

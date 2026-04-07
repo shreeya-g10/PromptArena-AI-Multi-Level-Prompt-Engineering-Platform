@@ -4,6 +4,7 @@ import { Send, Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { apiClient } from '../services/api';
 import { authService } from '../utils/auth';
 import type { CodingProblem, Level1Response } from '../services/contracts';
+import { setLevelCompleted } from '../utils/progress';
 
 export function Level1Page() {
   const [problems, setProblems] = useState<CodingProblem[]>([]);
@@ -58,6 +59,9 @@ export function Level1Page() {
       setLowScoreAttempts((count) =>
         response.structureScore < 4 ? count + 1 : 0
       );
+      if (response.reliabilityScore >= 80) {
+        setLevelCompleted(1);
+      }
     } catch (submitError) {
       setError(
         submitError instanceof Error

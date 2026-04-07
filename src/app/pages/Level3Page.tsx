@@ -20,6 +20,7 @@ import {
 import { apiClient } from '../services/api';
 import { authService } from '../utils/auth';
 import type { AnalyticsResponse, CodingProblem, Level3Response } from '../services/contracts';
+import { setLevelCompleted } from '../utils/progress';
 
 export function Level3Page() {
   const [mode, setMode] = useState<'ethical' | 'coding'>('ethical');
@@ -74,6 +75,9 @@ export function Level3Page() {
         mode,
       });
       setAnalysisResult(response);
+      if (response.ethicalIntegrityScore >= 80) {
+        setLevelCompleted(3);
+      }
     } catch (submitError) {
       setError(
         submitError instanceof Error
@@ -219,7 +223,7 @@ export function Level3Page() {
           </div>
 
           {/* Average Score */}
-          <div className="bg-card border border-border rounded-xl p-6">
+          <div className="bg-card border border-border rounded-xl p-6 text-card-foreground">
             <div className="flex items-center justify-between mb-3">
               <div className="size-10 bg-violet-500/20 text-violet-500 rounded-lg flex items-center justify-center">
                 <Award className="size-5" />
@@ -231,7 +235,7 @@ export function Level3Page() {
           </div>
 
           {/* Improvement */}
-          <div className="bg-card border border-border rounded-xl p-6">
+          <div className="bg-card border border-border rounded-xl p-6 text-card-foreground">
             <div className="flex items-center justify-between mb-3">
               <div className="size-10 bg-orange-500/20 text-orange-500 rounded-lg flex items-center justify-center">
                 <TrendingUp className="size-5" />
@@ -246,7 +250,7 @@ export function Level3Page() {
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Score History */}
-          <div className="bg-card border border-border rounded-xl p-6">
+          <div className="bg-card border border-border rounded-xl p-6 text-card-foreground">
             <h2 className="text-xl font-semibold mb-6">Score Over Time</h2>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={scoreHistory}>
@@ -285,7 +289,7 @@ export function Level3Page() {
           </div>
 
           {/* Category Breakdown */}
-          <div className="bg-card border border-border rounded-xl p-6">
+          <div className="bg-card border border-border rounded-xl p-6 text-card-foreground">
             <h2 className="text-xl font-semibold mb-6">
               Category Breakdown
             </h2>

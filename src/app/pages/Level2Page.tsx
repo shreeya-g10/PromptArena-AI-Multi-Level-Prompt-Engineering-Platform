@@ -4,6 +4,7 @@ import { RefreshCw, Sparkles, ArrowRight } from 'lucide-react';
 import { apiClient } from '../services/api';
 import { authService } from '../utils/auth';
 import type { CodingProblem, Level2Response, PromptVersion } from '../services/contracts';
+import { setLevelCompleted } from '../utils/progress';
 
 interface PromptSuggestion {
   title: string;
@@ -101,6 +102,9 @@ export function Level2Page() {
         ...prev,
         [selectedProblemId]: (prev[selectedProblemId] || 0) + 1,
       }));
+      if (response.reliabilityScore >= 80) {
+        setLevelCompleted(2);
+      }
     } catch (optimizeError) {
       setError(
         optimizeError instanceof Error
@@ -280,6 +284,9 @@ export function Level2Page() {
                     Problem: <span className="text-foreground">{selectedProblem.problem_id} - {selectedProblem.title}</span>
                   </p>
                 )}
+                <p className="text-sm text-muted-foreground mb-3">
+                  Submitted Prompt: <span className="text-foreground">{customPrompt.slice(0, 140)}{customPrompt.length > 140 ? '...' : ''}</span>
+                </p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4 text-sm">
                   <div className="bg-accent/50 border border-border rounded-lg p-3">
                     Version: <span className="font-semibold">v{result.newVersion.version}</span>
@@ -293,6 +300,18 @@ export function Level2Page() {
                     </div>
                   )}
                 </div>
+                {(typeof result.problemRelevanceScore === 'number' || result.relevanceNotes?.length) && (
+                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 text-sm mb-4">
+                    <p className="font-semibold text-foreground mb-1">
+                      Problem Relevance Score: {result.problemRelevanceScore ?? 0}%
+                    </p>
+                    <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                      {(result.relevanceNotes || []).map((note, index) => (
+                        <li key={index}>{note}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 {(result.reliabilityScore >= 80 || currentAttempts >= 3) && (
                   <div className="bg-accent/50 border border-border rounded-lg p-4 whitespace-pre-wrap text-sm mb-4">
