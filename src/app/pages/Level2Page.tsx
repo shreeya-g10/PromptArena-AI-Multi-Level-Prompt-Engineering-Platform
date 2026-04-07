@@ -1,6 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Navbar } from '../components/Navbar';
 import { RefreshCw, Sparkles, ArrowRight } from 'lucide-react';
+import { apiClient } from '../services/api';
+import { authService } from '../utils/auth';
+import type { CodingProblem, Level2Response, PromptVersion } from '../services/contracts';
+import { setLevelCompleted } from '../utils/progress';
 
 interface PromptSuggestion {
   title: string;
@@ -38,33 +42,78 @@ const suggestions: PromptSuggestion[] = [
 ];
 
 export function Level2Page() {
+  const [problems, setProblems] = useState<CodingProblem[]>([]);
+  const [selectedProblemId, setSelectedProblemId] = useState('');
   const [selectedSuggestion, setSelectedSuggestion] = useState(suggestions[0]);
   const [customPrompt, setCustomPrompt] = useState('');
-  const [optimizedPrompt, setOptimizedPrompt] = useState('');
+  const [result, setResult] = useState<Level2Response | null>(null);
+  const [versionMap, setVersionMap] = useState<Record<string, PromptVersion[]>>({});
+  const [attemptMap, setAttemptMap] = useState<Record<string, number>>({});
   const [isOptimizing, setIsOptimizing] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const loadProblems = async () => {
+      try {
+        const data = await apiClient.fetchProblems();
+        setProblems(data);
+        setSelectedProblemId(data[0]?.problem_id || '');
+      } catch {
+        setError('Unable to load problems.');
+      }
+    };
+    void loadProblems();
+  }, []);
+
+  const selectedProblem = useMemo(
+    () => problems.find((problem) => problem.problem_id === selectedProblemId) || null,
+    [problems, selectedProblemId]
+  );
+
+  const currentAttempts = attemptMap[selectedProblemId] || 0;
 
   const handleOptimize = async () => {
-    if (!customPrompt.trim()) return;
+    if (!customPrompt.trim() || !selectedProblemId) return;
 
     setIsOptimizing(true);
-
-    // Simulate AI optimization
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    const optimized = `${customPrompt}
-
-**Optimization suggestions applied:**
-• Added specific context about the target audience
-• Defined clear output format requirements
-• Included measurable constraints (word count, structure)
-• Specified tone and style preferences
-• Added examples of desired outcomes
-
-**Enhanced version:**
-${customPrompt} Please structure your response with: 1) A brief introduction, 2) Main points in bullet format, 3) A practical example. Use professional tone, keep it under 200 words, and ensure it's actionable for beginners.`;
-
-    setOptimizedPrompt(optimized);
-    setIsOptimizing(false);
+    setError('');
+    try {
+      const currentUser = authService.getCurrentUser();
+      const response = await apiClient.submitLevel2Prompt({
+        userId: currentUser?.id || 'guest-user',
+        problemId: selectedProblemId,
+        promptText: customPrompt,
+        previousVersions: versionMap[selectedProblemId] || [],
+        problemContext: selectedProblem
+          ? {
+              title: selectedProblem.title,
+              description: selectedProblem.description,
+              expected_output: selectedProblem.expected_output,
+              tags: selectedProblem.tags,
+            }
+          : undefined,
+      });
+      setResult(response);
+      setVersionMap((prev) => ({
+        ...prev,
+        [selectedProblemId]: response.evolutionHistory,
+      }));
+      setAttemptMap((prev) => ({
+        ...prev,
+        [selectedProblemId]: (prev[selectedProblemId] || 0) + 1,
+      }));
+      if (response.reliabilityScore >= 80) {
+        setLevelCompleted(2);
+      }
+    } catch (optimizeError) {
+      setError(
+        optimizeError instanceof Error
+          ? optimizeError.message
+          : 'Unable to optimize prompt. Please try again.'
+      );
+    } finally {
+      setIsOptimizing(false);
+    }
   };
 
   return (
@@ -83,6 +132,30 @@ ${customPrompt} Please structure your response with: 1) A brief introduction, 2)
           </p>
         </div>
 
+        <div className="mb-6 bg-card border border-border rounded-xl p-5">
+          <label className="block text-sm font-medium text-foreground mb-2">Select Problem</label>
+          <select
+            value={selectedProblemId}
+            onChange={(e) => {
+              setSelectedProblemId(e.target.value);
+              setResult(null);
+              setCustomPrompt('');
+            }}
+            className="w-full bg-accent border border-border text-foreground rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-violet-500"
+          >
+            {problems.map((problem) => (
+              <option key={problem.problem_id} value={problem.problem_id}>
+                {problem.problem_id} - {problem.title} ({problem.difficulty})
+              </option>
+            ))}
+          </select>
+          {selectedProblem && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              {selectedProblem.description}
+            </p>
+          )}
+        </div>
+
         {/* Improvement Techniques */}
         <div className="mb-8">
           <h2 className="text-xl font-semibold mb-4">
@@ -93,7 +166,7 @@ ${customPrompt} Please structure your response with: 1) A brief introduction, 2)
               <button
                 key={index}
                 onClick={() => setSelectedSuggestion(suggestion)}
-                className={`text-left p-5 rounded-xl border-2 transition-all ${
+                className={`text-left p-5 rounded-xl border-2 text-card-foreground transition-all ${
                   selectedSuggestion.title === suggestion.title
                     ? 'border-violet-500 bg-violet-500/5'
                     : 'border-border bg-card hover:border-violet-500/50'
@@ -114,9 +187,14 @@ ${customPrompt} Please structure your response with: 1) A brief introduction, 2)
           </div>
         </div>
 
-        {/* Before & After Comparison */}
-        <div className="bg-card border border-border rounded-xl p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-6">Before & After</h2>
+        {/* Static Educational Sample */}
+        <div className="bg-card border border-border rounded-xl p-6 mb-8 text-card-foreground">
+          <div className="flex items-center justify-between mb-6 gap-2">
+            <h2 className="text-xl font-semibold">Sample Technique Example</h2>
+            <span className="text-xs bg-amber-500/15 text-amber-500 border border-amber-500/30 rounded px-2 py-1">
+              Static sample - not your selected problem output
+            </span>
+          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Before */}
@@ -157,7 +235,7 @@ ${customPrompt} Please structure your response with: 1) A brief introduction, 2)
         </div>
 
         {/* Try It Yourself */}
-        <div className="bg-card border border-border rounded-xl p-6">
+        <div className="bg-card border border-border rounded-xl p-6 text-card-foreground">
           <h2 className="text-xl font-semibold mb-4">Try It Yourself</h2>
 
           <div className="space-y-4">
@@ -192,13 +270,84 @@ ${customPrompt} Please structure your response with: 1) A brief introduction, 2)
               )}
             </button>
 
-            {optimizedPrompt && (
+            {error && (
+              <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 text-sm text-destructive">
+                {error}
+              </div>
+            )}
+
+            {result && (
               <div className="mt-6">
-                <label className="block font-medium mb-2">
-                  Optimized Result
-                </label>
-                <div className="bg-accent/50 border border-border rounded-lg p-4 whitespace-pre-wrap text-sm">
-                  {optimizedPrompt}
+                <label className="block font-medium mb-2">Optimization Result (Your Run)</label>
+                {selectedProblem && (
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Problem: <span className="text-foreground">{selectedProblem.problem_id} - {selectedProblem.title}</span>
+                  </p>
+                )}
+                <p className="text-sm text-muted-foreground mb-3">
+                  Submitted Prompt: <span className="text-foreground">{customPrompt.slice(0, 140)}{customPrompt.length > 140 ? '...' : ''}</span>
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4 text-sm">
+                  <div className="bg-accent/50 border border-border rounded-lg p-3">
+                    Version: <span className="font-semibold">v{result.newVersion.version}</span>
+                  </div>
+                  <div className="bg-accent/50 border border-border rounded-lg p-3">
+                    Reliability: <span className="font-semibold">{result.reliabilityScore}%</span>
+                  </div>
+                  {(result.reliabilityScore >= 80 || currentAttempts >= 3) && (
+                    <div className="bg-accent/50 border border-border rounded-lg p-3">
+                      Efficiency Index: <span className="font-semibold">{result.efficiencyIndex}%</span>
+                    </div>
+                  )}
+                </div>
+                {(typeof result.problemRelevanceScore === 'number' || result.relevanceNotes?.length) && (
+                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 text-sm mb-4">
+                    <p className="font-semibold text-foreground mb-1">
+                      Problem Relevance Score: {result.problemRelevanceScore ?? 0}%
+                    </p>
+                    <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                      {(result.relevanceNotes || []).map((note, index) => (
+                        <li key={index}>{note}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {(result.reliabilityScore >= 80 || currentAttempts >= 3) && (
+                  <div className="bg-accent/50 border border-border rounded-lg p-4 whitespace-pre-wrap text-sm mb-4">
+                    <p className="font-semibold mb-2 text-foreground">Prompt Comparison</p>
+                    <p className="text-muted-foreground mb-2">
+                      Improvement: <span className="font-semibold text-green-500">{result.comparison.improvementPercent}%</span>
+                    </p>
+                    <p className="mb-1"><span className="font-medium">Before:</span> {result.comparison.before}</p>
+                    <p><span className="font-medium">After:</span> {result.comparison.after}</p>
+                  </div>
+                )}
+
+                <div className="bg-card border border-border rounded-lg p-4 mb-4">
+                  <p className="font-semibold mb-2">Improvement Feedback</p>
+                  <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                    {result.feedback.map((item, index) => (
+                      <li key={index}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <p className="font-semibold mb-2">Prompt Evolution Timeline</p>
+                  <div className="space-y-2">
+                    {result.evolutionHistory.map((version) => (
+                      <div
+                        key={version.version}
+                        className="text-sm bg-accent/40 rounded p-2 flex items-center justify-between gap-4"
+                      >
+                        <span>v{version.version} - Score {version.structureScore}/10</span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(version.timestamp).toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}

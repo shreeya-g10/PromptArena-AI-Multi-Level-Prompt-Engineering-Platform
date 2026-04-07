@@ -36,7 +36,7 @@ export function LoginPage() {
           <div className="inline-flex items-center justify-center size-16 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl mb-4 shadow-lg shadow-violet-500/20">
             <span className="text-white text-2xl font-bold">PA</span>
           </div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-violet-500 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold text-foreground bg-gradient-to-r from-violet-500 to-purple-600 supports-[(-webkit-background-clip:text)]:bg-clip-text supports-[(-webkit-background-clip:text)]:text-transparent">
             PromptArena AI
           </h1>
           <p className="text-muted-foreground mt-2">

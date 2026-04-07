@@ -1,8 +1,11 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
 import { Trophy, Zap, Target, TrendingUp } from 'lucide-react';
-import { mockLeaderboard } from '../utils/mockData';
 import { authService } from '../utils/auth';
+import { apiClient } from '../services/api';
+import type { LeaderboardEntry } from '../services/contracts';
+import { getProgress } from '../utils/progress';
 
 const levels = [
   {
@@ -34,6 +37,32 @@ const levels = [
 export function DashboardPage() {
   const navigate = useNavigate();
   const currentUser = authService.getCurrentUser();
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboardError, setLeaderboardError] = useState('');
+  const [progress, setProgress] = useState(getProgress());
+
+  useEffect(() => {
+    const loadLeaderboard = async () => {
+      try {
+        const data = await apiClient.fetchLeaderboard();
+        setLeaderboard(data);
+      } catch (loadError) {
+        setLeaderboardError(
+          loadError instanceof Error
+            ? loadError.message
+            : 'Unable to load leaderboard.'
+        );
+      }
+    };
+    void loadLeaderboard();
+    setProgress(getProgress());
+  }, []);
+
+  const levelStatusText = (levelId: number) => {
+    if (levelId === 1) return progress.level1Completed ? 'Completed' : 'Available';
+    if (levelId === 2) return progress.level2Completed ? 'Completed' : 'Available';
+    return progress.level3Completed ? 'Completed' : 'Available';
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -60,8 +89,11 @@ export function DashboardPage() {
                 <button
                   key={level.id}
                   onClick={() => navigate(level.path)}
-                  className="group relative bg-card border border-border rounded-2xl p-8 hover:shadow-xl hover:shadow-violet-500/10 transition-all hover:-translate-y-1 text-left"
+                  className="group relative bg-card border border-border rounded-2xl p-8 text-card-foreground hover:shadow-xl hover:shadow-violet-500/10 transition-all hover:-translate-y-1 text-left"
                 >
+                  <div className="absolute top-4 right-4 text-xs px-2 py-1 rounded bg-accent/70 text-foreground">
+                    {levelStatusText(level.id)}
+                  </div>
                   <div
                     className={`inline-flex items-center justify-center size-14 bg-gradient-to-br ${level.color} rounded-xl mb-5 shadow-lg group-hover:scale-110 transition-transform`}
                   >
@@ -125,7 +157,7 @@ export function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {mockLeaderboard.map((user) => {
+                {leaderboard.map((user) => {
                   const isTop3 = user.rank <= 3;
                   const isCurrentUser =
                     currentUser?.username === user.username;
@@ -171,7 +203,7 @@ export function DashboardPage() {
                           >
                             {user.username.charAt(0).toUpperCase()}
                           </div>
-                          <span className="font-medium">{user.username}</span>
+                          <span className="font-medium text-foreground">{user.username}</span>
                           {isCurrentUser && (
                             <span className="text-xs bg-violet-500/20 text-violet-500 px-2 py-1 rounded">
                               You
@@ -179,12 +211,19 @@ export function DashboardPage() {
                           )}
                         </div>
                       </td>
-                      <td className="py-4 px-4 text-right font-semibold">
+                      <td className="py-4 px-4 text-right font-semibold text-foreground">
                         {user.score.toLocaleString()}
                       </td>
                     </tr>
                   );
                 })}
+                {!leaderboard.length && (
+                  <tr>
+                    <td colSpan={3} className="py-8 text-center text-muted-foreground">
+                      {leaderboardError || 'No leaderboard data available yet.'}
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

@@ -23,7 +23,7 @@ export function Navbar() {
               <div className="size-8 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold">PA</span>
               </div>
-              <span className="font-semibold text-xl bg-gradient-to-r from-violet-500 to-purple-600 bg-clip-text text-transparent">
+              <span className="font-semibold text-xl text-foreground bg-gradient-to-r from-violet-500 to-purple-600 supports-[(-webkit-background-clip:text)]:bg-clip-text supports-[(-webkit-background-clip:text)]:text-transparent">
                 PromptArena AI
               </span>
             </button>
@@ -32,7 +32,7 @@ export function Navbar() {
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate('/dashboard')}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-accent transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-foreground hover:bg-accent transition-colors"
             >
               <Home className="size-4" />
               <span>Dashboard</span>
@@ -45,8 +45,8 @@ export function Navbar() {
                     {user.username.charAt(0).toUpperCase()}
                   </span>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium">{user.username}</span>
+              <div className="flex flex-col">
+                  <span className="text-sm font-medium text-foreground">{user.username}</span>
                   <span className="text-xs text-muted-foreground">
                     Score: {user.score}
                   </span>
@@ -56,7 +56,7 @@ export function Navbar() {
 
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
             >
               <LogOut className="size-4" />
               <span>Logout</span>
