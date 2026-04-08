@@ -1,20 +1,16 @@
-export function calculateReliability(aiOutput) {
-  // dummy logic (we improve later)
-
+export function calculateReliability(output) {
   let passed = 0;
-  let total = 5;
+  const total = 5;
 
-  if (aiOutput.includes("return")) passed++;
-  if (aiOutput.includes("for")) passed++;
-  if (aiOutput.includes("if")) passed++;
-  if (aiOutput.length > 20) passed++;
-  if (!aiOutput.includes("error")) passed++;
+  if (!output) return { score: 0, passed, total };
+
+  if (output.includes("def")) passed++;
+  if (output.includes("return")) passed++;
+  if (output.includes("for")) passed++;
+  if (output.length > 50) passed++;
+  if (!output.includes("error")) passed++;
 
   const score = Math.round((passed / total) * 100);
 
-  return {
-    passed,
-    total,
-    score
-  };
+  return { score, passed, total };
 }
