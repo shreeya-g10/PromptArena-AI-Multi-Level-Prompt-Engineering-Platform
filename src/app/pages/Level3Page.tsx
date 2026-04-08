@@ -122,72 +122,89 @@ export function Level3Page() {
           <p className="text-sm text-muted-foreground mb-4">
             Submit a safety-focused prompt for the ethical challenge and check hallucination risk.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Mode</label>
-              <select
-                value={mode}
-                onChange={(e) => setMode(e.target.value as 'ethical' | 'coding')}
-                className="w-full bg-accent border border-border text-foreground rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-violet-500"
-              >
-                <option value="ethical">Ethical Scenario</option>
-                <option value="coding">Coding Reliability / Hallucination</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Select Problem</label>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-  {problems.map((problem) => (
-    <div
-      key={problem.problem_id}
-      onClick={() => setSelectedProblemId(problem.problem_id)}
-      className={`cursor-pointer p-6 rounded-xl border transition-all
-        ${
-          selectedProblemId === problem.problem_id
-            ? "border-violet-500 bg-violet-500/10"
-            : "border-border bg-card hover:border-violet-400 hover:scale-[1.02]"
-        }`}
-    >
-      <div className="flex justify-between items-start mb-3">
-        <h3 className="text-xl font-bold text-foreground">
-          {problem.problem_id}
-        </h3>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
-        <span
-          className={`text-xs px-2 py-1 rounded ${
-            problem.difficulty === "Easy"
-              ? "bg-green-500/20 text-green-500"
-              : problem.difficulty === "Medium"
-              ? "bg-yellow-500/20 text-yellow-500"
-              : "bg-red-500/20 text-red-500"
-          }`}
-        >
-          {problem.difficulty}
-        </span>
-      </div>
+  {/* LEFT SIDE → Mode + Textarea */}
+  <div className="space-y-4">
 
-      <p className="text-xl font-bold text-foreground">
-        {problem.title}
-      </p>
+    {/* Mode */}
+    <div>
+      <label className="block text-sm font-medium text-foreground mb-2">
+        Mode
+      </label>
+      <select
+        value={mode}
+        onChange={(e) => setMode(e.target.value as 'ethical' | 'coding')}
+        className="w-full bg-accent border border-border text-foreground rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-violet-500"
+      >
+        <option value="ethical">Ethical Scenario</option>
+        <option value="coding">Coding Reliability / Hallucination</option>
+      </select>
     </div>
-  ))}
-</div>
-            </div>
-          </div>
-          <textarea
-            value={scenarioPrompt}
-            onChange={(e) => setScenarioPrompt(e.target.value)}
-            className="w-full h-28 bg-accent border border-border rounded-lg p-4 focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
-          />
-          <div className="mt-4">
-            <button
-              onClick={handleEvaluateScenario}
-              disabled={isSubmitting || !scenarioPrompt.trim()}
-              className="bg-gradient-to-r from-violet-500 to-purple-600 text-white px-5 py-2 rounded-lg font-medium hover:shadow-lg hover:shadow-violet-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+
+    {/* TEXTAREA */}
+    <textarea
+      value={scenarioPrompt}
+      onChange={(e) => setScenarioPrompt(e.target.value)}
+      className="w-full h-36 bg-accent border border-border rounded-lg p-4 focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
+    />
+
+    {/* BUTTON */}
+    <button
+      onClick={handleEvaluateScenario}
+      disabled={isSubmitting || !scenarioPrompt.trim()}
+      className="bg-gradient-to-r from-violet-500 to-purple-600 text-white px-5 py-2 rounded-lg font-medium hover:shadow-lg hover:shadow-violet-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {isSubmitting ? 'Evaluating...' : 'Evaluate Ethics'}
+    </button>
+
+  </div>
+
+  {/* RIGHT SIDE → Problem Cards */}
+  <div>
+    <label className="block text-sm font-medium text-foreground mb-2">
+      Select Problem
+    </label>
+
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {problems.map((problem) => (
+        <div
+          key={problem.problem_id}
+          onClick={() => setSelectedProblemId(problem.problem_id)}
+          className={`cursor-pointer p-6 rounded-xl border transition-all
+            ${
+              selectedProblemId === problem.problem_id
+                ? "border-violet-500 bg-violet-500/10"
+                : "border-border bg-card hover:border-violet-400 hover:scale-[1.02]"
+            }`}
+        >
+          <div className="flex justify-between items-start mb-3">
+            <h3 className="text-xl font-bold text-foreground">
+              {problem.problem_id}
+            </h3>
+
+            <span
+              className={`text-xs px-2 py-1 rounded ${
+                problem.difficulty === "Easy"
+                  ? "bg-green-500/20 text-green-500"
+                  : problem.difficulty === "Medium"
+                  ? "bg-yellow-500/20 text-yellow-500"
+                  : "bg-red-500/20 text-red-500"
+              }`}
             >
-              {isSubmitting ? 'Evaluating...' : 'Evaluate Ethics'}
-            </button>
+              {problem.difficulty}
+            </span>
           </div>
+
+          <p className="text-xl font-bold text-foreground">
+            {problem.title}
+          </p>
+        </div>
+      ))}
+    </div>
+  </div>
+
+</div>
 
           {analysisResult && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 text-sm">
@@ -281,26 +298,25 @@ export function Level3Page() {
               <LineChart data={scoreHistory}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis
-                  dataKey="date"
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                  tickFormatter={(value) => {
-                    const date = new Date(value);
-                    return `${date.getMonth() + 1}/${date.getDate()}`;
-                  }}
-                />
-                <YAxis
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                  domain={[0, 100]}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                  }}
-                />
+  dataKey="date"
+  stroke="#cbd5f5"   // light color
+  fontSize={12}
+/>
+
+<YAxis
+  stroke="#cbd5f5"
+  fontSize={12}
+  domain={[0, 100]}
+/>
+
+<Tooltip
+  contentStyle={{
+    backgroundColor: '#111',
+    border: '1px solid #333',
+    borderRadius: '8px',
+    color: '#fff'
+  }}
+/>
                 <Line
                   type="monotone"
                   dataKey="score"
@@ -321,16 +337,39 @@ export function Level3Page() {
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={categoryBreakdown} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis type="number" domain={[0, 100]} stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <YAxis dataKey="category" type="category" stroke="hsl(var(--muted-foreground))" fontSize={12} width={80} />
+                <XAxis
+  type="number"
+  domain={[0, 100]}
+  stroke="#ffffff"
+  tick={{ fill: "#ffffff", fontSize: 12 }}
+/>
+
+<YAxis
+  dataKey="category"
+  type="category"
+  stroke="#ffffff"
+  fontSize={14}
+  width={120}
+  tick={{ fill: "#ffffff", fontSize: 14 }}
+/>
                 <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                  }}
-                />
-                <Bar dataKey="score" fill="#8b5cf6" radius={[0, 8, 8, 0]} />
+  contentStyle={{
+    backgroundColor: '#111',
+    border: '1px solid #333',
+    borderRadius: '8px',
+    color: '#ffffff'
+  }}
+  labelStyle={{ color: '#ffffff', fontWeight: 'bold' }}
+  itemStyle={{ color: '#ffffff' }}
+/>
+                <Bar
+  dataKey="score"
+  fill="#8b5cf6"
+  radius={[0, 8, 8, 0]}
+  label={{ fill: "#ffffff", fontSize: 14 }}
+/>
+
+    
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -344,26 +383,33 @@ export function Level3Page() {
               <RadarChart data={categoryBreakdown}>
                 <PolarGrid stroke="hsl(var(--border))" />
                 <PolarAngleAxis
-                  dataKey="category"
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={14}
-                />
-                <PolarRadiusAxis angle={90} domain={[0, 100]} stroke="hsl(var(--muted-foreground))" />
+  dataKey="category"
+  stroke="#e5e7eb"   // brighter text
+  fontSize={14}
+/>
+
+<PolarRadiusAxis
+  angle={90}
+  domain={[0, 100]}
+  stroke="#9ca3af"
+/>
                 <Radar
-                  name="Your Score"
-                  dataKey="score"
-                  stroke="#8b5cf6"
-                  fill="#8b5cf6"
-                  fillOpacity={0.3}
-                  strokeWidth={2}
-                />
+  name="Your Score"
+  dataKey="score"
+  stroke="#a78bfa"
+  fill="#8b5cf6"
+  fillOpacity={0.5}
+/>
                 <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                  }}
-                />
+  contentStyle={{
+    backgroundColor: '#111',
+    border: '1px solid #333',
+    borderRadius: '8px',
+    color: '#ffffff'
+  }}
+  labelStyle={{ color: '#ffffff' }}
+  itemStyle={{ color: '#ffffff' }}
+/>
               </RadarChart>
             </ResponsiveContainer>
           </div>
