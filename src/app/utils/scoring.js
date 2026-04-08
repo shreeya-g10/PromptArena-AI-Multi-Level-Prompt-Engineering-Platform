@@ -30,3 +30,13 @@ export function evaluatePrompt(prompt, reliabilityScore = 0) {
         effectiveness
     };
 }
+export function calculateScore(prompt) {
+  let score = 0;
+
+  if (prompt.toLowerCase().includes("python")) score++;
+  if (prompt.toLowerCase().includes("input")) score++;
+  if (prompt.toLowerCase().includes("output")) score++;
+  if (prompt.toLowerCase().includes("handle") || prompt.toLowerCase().includes("edge")) score++;
+
+  return Math.round((score / 4) * 10);
+}

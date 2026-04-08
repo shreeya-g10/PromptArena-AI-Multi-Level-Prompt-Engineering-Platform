@@ -5,17 +5,21 @@ import { apiClient } from '../services/api';
 import { authService } from '../utils/auth';
 import type { CodingProblem, Level1Response } from '../services/contracts';
 import { setLevelCompleted } from '../utils/progress';
+import { evaluatePrompt } from "../utils";
 
 export function Level1Page() {
   const [problems, setProblems] = useState<CodingProblem[]>([]);
   const [selectedProblemId, setSelectedProblemId] = useState('');
-  const [prompt, setPrompt] = useState('');
+  
   const [result, setResult] = useState<Level1Response | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [isProblemsLoading, setIsProblemsLoading] = useState(true);
   const [attempts, setAttempts] = useState(0);
   const [lowScoreAttempts, setLowScoreAttempts] = useState(0);
+  const [prompt, setPrompt] = useState("");
+  const [output, setOutput] = useState("");
+  const [score, setScore] = useState(0);
 
   useEffect(() => {
     const loadProblems = async () => {
@@ -39,40 +43,51 @@ export function Level1Page() {
   );
 
   const handleSubmit = async () => {
-    if (!prompt.trim() || !selectedProblem) return;
+  if (!prompt.trim() || !selectedProblem) return;
 
-    setIsLoading(true);
-    setError('');
+  setIsLoading(true);
+  setError("");
 
-    try {
-      const currentUser = authService.getCurrentUser();
-      const nextAttempts = attempts + 1;
-      const response = await apiClient.submitLevel1Prompt({
-        userId: currentUser?.id || 'guest-user',
-        problemId: selectedProblem.problem_id,
-        promptText: prompt,
-        language: selectedProblem.language,
-        attempts: nextAttempts,
-      });
-      setResult(response);
-      setAttempts(nextAttempts);
-      setLowScoreAttempts((count) =>
-        response.structureScore < 4 ? count + 1 : 0
-      );
-      if (response.reliabilityScore >= 80) {
-        setLevelCompleted(1);
-      }
-    } catch (submitError) {
-      setError(
-        submitError instanceof Error
-          ? submitError.message
-          : 'Unable to evaluate prompt. Please try again.'
-      );
-    } finally {
-      setIsLoading(false);
+  try {
+    const nextAttempts = attempts + 1;
+
+    const response = await evaluatePrompt(prompt);
+
+   const formattedResponse: any = {
+  structureScore: response.structureScore,
+  successProbability: response.successProbability,
+  aiOutput: response.aiOutput,
+  generatedCode: response.aiOutput,
+  reliabilityScore: response.reliabilityScore,
+
+  // ✅ ADD THESE (IMPORTANT)
+  effectivenessScore: 0,
+  testCasesPassed: 0,
+  totalTestCases: 5,
+  suggestion: "Try improving prompt with input/output details"
+};
+
+    setResult(formattedResponse);
+    setAttempts(nextAttempts);
+
+    setLowScoreAttempts((count) =>
+      formattedResponse.structureScore < 4 ? count + 1 : 0
+    );
+
+    if (formattedResponse.structureScore >= 8) {
+      setLevelCompleted(1);
     }
-  };
 
+  } catch (submitError) {
+    setError(
+      submitError instanceof Error
+        ? submitError.message
+        : "Unable to evaluate prompt. Please try again."
+    );
+  } finally {
+    setIsLoading(false);
+  }
+};
   const safeTestCases = selectedProblem?.test_cases ?? [];
 
   return (
