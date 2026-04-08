@@ -6,9 +6,11 @@ export async function generateCode(prompt) {
     headers: {
       "Authorization": `Bearer ${API_KEY}`,
       "Content-Type": "application/json",
+      "HTTP-Referer": "http://localhost:5173",
+      "X-Title": "PromptArena Project",
     },
     body: JSON.stringify({
-      model: "mistralai/mistral-7b-instruct",
+      model: "openai/gpt-3.5-turbo", // ✅ FIXED
       messages: [
         { role: "user", content: prompt }
       ],
@@ -16,5 +18,8 @@ export async function generateCode(prompt) {
   });
 
   const data = await response.json();
-  return data.choices[0].message.content;
+
+  console.log("FULL RESPONSE:", data);
+
+  return data?.choices?.[0]?.message?.content || "No response";
 }
