@@ -134,21 +134,46 @@ export function Level2Page() {
 
         <div className="mb-6 bg-card border border-border rounded-xl p-5">
           <label className="block text-sm font-medium text-foreground mb-2">Select Problem</label>
-          <select
-            value={selectedProblemId}
-            onChange={(e) => {
-              setSelectedProblemId(e.target.value);
-              setResult(null);
-              setCustomPrompt('');
-            }}
-            className="w-full bg-accent border border-border text-foreground rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-violet-500"
-          >
-            {problems.map((problem) => (
-              <option key={problem.problem_id} value={problem.problem_id}>
-                {problem.problem_id} - {problem.title} ({problem.difficulty})
-              </option>
-            ))}
-          </select>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  {problems.map((problem) => (
+    <div
+      key={problem.problem_id}
+      onClick={() => {
+        setSelectedProblemId(problem.problem_id);
+        setResult(null);
+        setCustomPrompt('');
+      }}
+      className={`cursor-pointer p-6 rounded-xl border transition-all
+        ${
+          selectedProblemId === problem.problem_id
+            ? "border-violet-500 bg-violet-500/10"
+            : "border-border bg-card hover:border-violet-400 hover:scale-[1.02]"
+        }`}
+    >
+      <div className="flex justify-between items-start mb-3">
+        <h3 className="text-xl font-bold text-foreground">
+          {problem.problem_id}
+        </h3>
+
+        <span
+          className={`text-xs px-2 py-1 rounded ${
+            problem.difficulty === "Easy"
+              ? "bg-green-500/20 text-green-500"
+              : problem.difficulty === "Medium"
+              ? "bg-yellow-500/20 text-yellow-500"
+              : "bg-red-500/20 text-red-500"
+          }`}
+        >
+          {problem.difficulty}
+        </span>
+      </div>
+
+      <p className="text-xl font-bold text-foreground">
+        {problem.title}
+      </p>
+    </div>
+  ))}
+</div>
           {selectedProblem && (
             <p className="mt-2 text-sm text-muted-foreground">
               {selectedProblem.description}
