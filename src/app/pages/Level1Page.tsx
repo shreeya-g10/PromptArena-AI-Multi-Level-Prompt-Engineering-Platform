@@ -127,7 +127,7 @@ export function Level1Page() {
         }`}
     >
       <div className="flex justify-between items-center mb-2">
-        <h3 className="text-foreground font-semibold">
+        <h3 className="text-xl font-bold text-foreground">
           {problem.problem_id}
         </h3>
 
@@ -144,7 +144,7 @@ export function Level1Page() {
         </span>
       </div>
 
-      <p className="text-sm text-muted-foreground">
+      <p className="text-xl font-bold text-foreground">
         {problem.title}
       </p>
     </div>
