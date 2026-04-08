@@ -108,23 +108,48 @@ export function Level1Page() {
 
         <div className="mb-6 bg-card border border-border rounded-xl p-5">
           <label className="block text-sm font-medium text-foreground mb-2">Select Problem</label>
-          <select
-            value={selectedProblemId}
-            onChange={(e) => {
-              setSelectedProblemId(e.target.value);
-              setPrompt('');
-              setResult(null);
-              setAttempts(0);
-              setLowScoreAttempts(0);
-            }}
-            className="w-full bg-accent border border-border text-foreground rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-violet-500"
-          >
-            {problems.map((problem) => (
-              <option key={problem.problem_id} value={problem.problem_id}>
-                {problem.problem_id} - {problem.title} ({problem.difficulty})
-              </option>
-            ))}
-          </select>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  {problems.map((problem) => (
+    <div
+      key={problem.problem_id}
+      onClick={() => {
+        setSelectedProblemId(problem.problem_id);
+        setPrompt('');
+        setResult(null);
+        setAttempts(0);
+        setLowScoreAttempts(0);
+      }}
+      className={`cursor-pointer p-4 rounded-xl border transition-all
+        ${
+          selectedProblemId === problem.problem_id
+            ? "border-violet-500 bg-violet-500/10"
+            : "border-border bg-card hover:border-violet-400"
+        }`}
+    >
+      <div className="flex justify-between items-center mb-2">
+        <h3 className="text-foreground font-semibold">
+          {problem.problem_id}
+        </h3>
+
+        <span
+          className={`text-xs px-2 py-1 rounded ${
+            problem.difficulty === "Easy"
+              ? "bg-green-500/20 text-green-500"
+              : problem.difficulty === "Medium"
+              ? "bg-yellow-500/20 text-yellow-500"
+              : "bg-red-500/20 text-red-500"
+          }`}
+        >
+          {problem.difficulty}
+        </span>
+      </div>
+
+      <p className="text-sm text-muted-foreground">
+        {problem.title}
+      </p>
+    </div>
+  ))}
+</div>
           {selectedProblem && (
             <div className="mt-3 text-sm text-muted-foreground">
               <p className="text-foreground mb-1">Expected Output: {selectedProblem.expected_output}</p>
