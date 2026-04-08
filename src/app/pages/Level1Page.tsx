@@ -56,15 +56,18 @@ export function Level1Page() {
    const formattedResponse: any = {
   structureScore: response.structureScore,
   successProbability: response.successProbability,
-  aiOutput: response.aiOutput,
   generatedCode: response.aiOutput,
   reliabilityScore: response.reliabilityScore,
+  effectivenessScore: response.effectivenessScore,
+  testCasesPassed: response.testCasesPassed,
+  totalTestCases: response.totalTestCases,
 
-  // ✅ ADD THESE (IMPORTANT)
-  effectivenessScore: 0,
-  testCasesPassed: 0,
-  totalTestCases: 5,
-  suggestion: "Try improving prompt with input/output details"
+  suggestion:
+    response.structureScore < 4
+      ? "Specify language, input/output and constraints."
+      : response.structureScore < 7
+      ? "Try adding edge cases and expected behavior."
+      : "Well-structured prompt!",
 };
 
     setResult(formattedResponse);

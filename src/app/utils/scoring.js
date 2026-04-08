@@ -1,20 +1,26 @@
 export function calculateStructureScore(prompt) {
-    let score = 0;
-    const text = prompt.toLowerCase();
+  let score = 0;
+  const text = prompt.toLowerCase();
 
-    // Parameters
-    if (text.includes("python") || text.includes("java")) score++;
-    if (text.includes("function") || text.includes("program")) score++;
-    if (text.includes("input")) score++;
-    if (text.includes("output")) score++;
-    if (text.includes("edge") || text.includes("constraint")) score++;
+  // 4 parameters (as per your doc)
 
-    const total = 5;
+  if (text.includes("python") || text.includes("java") || text.includes("c++"))
+    score += 1;
 
-    return Math.round((score / total) * 10);
+  if (text.includes("function") || text.includes("program"))
+    score += 1;
+
+  if (text.includes("edge") || text.includes("negative") || text.includes("zero"))
+    score += 1;
+
+  if (text.includes("input") || text.includes("output") || text.includes("return"))
+    score += 1;
+
+  // Convert to /10 scale
+  return Math.round((score / 4) * 10);
 }
 export function predictSuccess(structureScore) {
-    return structureScore * 10; // %
+  return structureScore * 10;
 }
 export function calculateEffectiveness(structureScore, reliabilityScore) {
     return (structureScore * 5) + (reliabilityScore * 0.5);

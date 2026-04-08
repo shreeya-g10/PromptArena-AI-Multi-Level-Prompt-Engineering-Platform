@@ -1,4 +1,8 @@
 import { calculateReliability } from "./reliability";
+import { calculateStructureScore, predictSuccess } from "./scoring";
+
+import { generateCode } from "../services/aiService";
+
 export {
     calculateStructureScore,
     predictSuccess,
@@ -19,21 +23,32 @@ export {
     shouldShowComparison
 } from "./evolution";
 import { calculateScore } from "./scoring";
-import { generateCode } from "../services/aiService";
+
 
 export async function evaluatePrompt(prompt) {
-  const structureScore = calculateScore(prompt);
+  // Step 3: Structure Score
+  const structureScore = calculateStructureScore(prompt);
 
-  const successProbability = structureScore * 10;
+  // Step 4: Success Prediction
+  const successProbability = predictSuccess(structureScore);
 
+  // Step 5: AI call
   const aiOutput = await generateCode(prompt);
+
+  // Step 6–7: Reliability
   const reliability = calculateReliability(aiOutput);
 
+  // Step 8: Effectiveness
+  const effectivenessScore =
+    structureScore * 5 + reliability.score * 0.5;
+
   return {
-  structureScore,
-  successProbability,
-  aiOutput,
-  reliabilityScore: reliability.score
-};
-  
+    structureScore,
+    successProbability,
+    aiOutput,
+    reliabilityScore: reliability.score,
+    effectivenessScore: Math.round(effectivenessScore),
+    testCasesPassed: reliability.passed,
+    totalTestCases: reliability.total,
+  };
 }
