@@ -1,21 +1,14 @@
 import express from "express";
+import { handleLevel1 } from "../controllers/level1Controller.js";
+
 const router = express.Router();
 
-// ✅ GET (for browser)
+// optional GET (for browser)
 router.get("/", (req, res) => {
-  res.send("Level1 working (use POST to test)");
+  res.send("Level1 working (use POST)");
 });
 
-// ✅ POST (your actual API)
-router.post("/", (req, res) => {
-  const { prompt } = req.body;
-
-  console.log("Received:", prompt);
-
-  res.json({
-    message: "Level 1 API working ✅",
-    promptReceived: prompt
-  });
-});
+// ✅ MAIN ROUTE (IMPORTANT)
+router.post("/", handleLevel1);
 
 export default router;
