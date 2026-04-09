@@ -1,10 +1,10 @@
 import { calculateReliability } from "./reliability";
-import { calculateStructureScore, predictSuccess } from "./scoring";
+import { predictSuccess } from "./scoring";
 
 import { generateCode } from "../services/aiService";
 
 export {
-    calculateStructureScore,
+   
     predictSuccess,
     calculateEffectiveness,
     
@@ -23,32 +23,73 @@ export {
     shouldShowComparison
 } from "./evolution";
 import { calculateScore } from "./scoring";
+function calculateStructureScore(prompt) {
+  let score = 0;
 
+  if (/python|java|c\+\+|javascript/i.test(prompt)) score++; // language
+  if (/function|method/i.test(prompt)) score++; // function
+  if (/input|parameter|number|n/i.test(prompt)) score++; // input
+  if (/return|output|true|false/i.test(prompt)) score++; // output
+  if (/edge|negative|zero|constraint|1/i.test(prompt)) score++; // edge cases
 
-export async function evaluatePrompt(prompt) {
-  // Step 3: Structure Score
-  const structureScore = calculateStructureScore(prompt);
+  return score * 2; // out of 10
+}
 
-  // Step 4: Success Prediction
+function isSameAsProblem(prompt, problem) {
+  return prompt.trim().toLowerCase() === problem.trim().toLowerCase();
+}
+
+export async function evaluatePrompt(prompt, problem) {
+
+  // ✅ 1. Structure Score
+  let structureScore = calculateStructureScore(prompt);
+
+  // ✅ 2. Copy Detection
+  if (problem && isSameAsProblem(prompt, problem)) {
+    structureScore = Math.min(structureScore, 2);
+  }
+
+  // ✅ 3. Success Prediction
   const successProbability = predictSuccess(structureScore);
 
-  // Step 5: AI call
+  // ✅ 4. AI Output
   const aiOutput = await generateCode(prompt);
 
-  // Step 6–7: Reliability
-  const reliability = calculateReliability(aiOutput);
+  // ✅ 5. Reliability
+  const reliabilityRaw = calculateReliability(aiOutput);
 
-  // Step 8: Effectiveness
-  const effectivenessScore =
-    structureScore * 5 + reliability.score * 0.5;
+  const testCaseScore =
+    (reliabilityRaw.passed / reliabilityRaw.total) * 100;
 
+  const reliabilityScore = Math.round(
+    testCaseScore * 0.7 + structureScore * 3
+  );
+
+  // ✅ 6. Effectiveness (FIXED)
+  const effectivenessScore = Math.round(
+    structureScore * 6 + reliabilityScore * 0.4
+  );
+
+  // ✅ 7. Suggestion
+  let suggestion = "";
+
+  if (structureScore < 5) {
+    suggestion = "Mention input, output and edge cases clearly.";
+  } else if (structureScore < 7) {
+    suggestion = "Try adding more constraints and clarity.";
+  } else {
+    suggestion = "Well-structured prompt!";
+  }
+
+  // ✅ 8. Return
   return {
     structureScore,
     successProbability,
     aiOutput,
-    reliabilityScore: reliability.score,
-    effectivenessScore: Math.round(effectivenessScore),
-    testCasesPassed: reliability.passed,
-    totalTestCases: reliability.total,
+    reliabilityScore,
+    effectivenessScore,
+    testCasesPassed: reliabilityRaw.passed,
+    totalTestCases: reliabilityRaw.total,
+    suggestion
   };
 }

@@ -51,7 +51,7 @@ export function Level1Page() {
   try {
     const nextAttempts = attempts + 1;
 
-    const response = await evaluatePrompt(prompt);
+    const response = await evaluatePrompt(prompt, selectedProblem?.description || "");
 
    const formattedResponse: any = {
   structureScore: response.structureScore,
@@ -63,11 +63,11 @@ export function Level1Page() {
   totalTestCases: response.totalTestCases,
 
   suggestion:
-    response.structureScore < 4
-      ? "Specify language, input/output and constraints."
-      : response.structureScore < 7
-      ? "Try adding edge cases and expected behavior."
-      : "Well-structured prompt!",
+  response.structureScore < 4
+    ? "Specify language, input/output and constraints."
+    : response.structureScore < 7
+    ? "Try adding edge cases and expected behavior."
+    : "Well-structured prompt!",
 };
 
     setResult(formattedResponse);
