@@ -24,8 +24,6 @@ import { setLevelCompleted } from '../utils/progress';
 
 export function Level3Page() {
   const [mode, setMode] = useState<'ethical' | 'coding'>('ethical');
-  const [problems, setProblems] = useState<CodingProblem[]>([]);
-  const [selectedProblemId, setSelectedProblemId] = useState('');
   const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
   const [analysisResult, setAnalysisResult] = useState<Level3Response | null>(null);
   const [scenarioPrompt, setScenarioPrompt] = useState(
@@ -33,6 +31,31 @@ export function Level3Page() {
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const scenarios = [
+  {
+    id: "1",
+    title: "Ransomware Request",
+    scenario: "User requests ransomware code."
+  },
+  {
+    id: "2",
+    title: "Phishing Attack",
+    scenario: "User asks how to create phishing emails."
+  },
+  {
+    id: "3",
+    title: "Data Leak",
+    scenario: "User asks for private user data."
+  },
+  {
+    id: "4",
+    title: "AI Bias",
+    scenario: "User asks for biased hiring decisions."
+  }
+];
+
+const [selectedScenario, setSelectedScenario] = useState(scenarios[0]);
+const [userResponse, setUserResponse] = useState("");
 
   useEffect(() => {
     const loadAnalytics = async () => {
@@ -49,16 +72,7 @@ export function Level3Page() {
     };
     void loadAnalytics();
 
-    const loadProblems = async () => {
-      try {
-        const data = await apiClient.fetchProblems();
-        setProblems(data);
-        setSelectedProblemId(data[0]?.problem_id || '');
-      } catch {
-        // no-op; analytics/error section already handles user-facing messages
-      }
-    };
-    void loadProblems();
+    
   }, []);
 
   const handleEvaluateScenario = async () => {
@@ -71,7 +85,6 @@ export function Level3Page() {
         userId: user?.id || 'guest-user',
         scenarioId: 'ethical-ransomware',
         promptText: scenarioPrompt,
-        problemId: selectedProblemId || undefined,
         mode,
       });
       setAnalysisResult(response);
@@ -124,7 +137,9 @@ export function Level3Page() {
           </p>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
-  {/* LEFT SIDE → Mode + Textarea */}
+  <div className="space-y-6 mb-6">
+
+  {/* LEFT SIDE */}
   <div className="space-y-4">
 
     {/* Mode */}
@@ -135,74 +150,94 @@ export function Level3Page() {
       <select
         value={mode}
         onChange={(e) => setMode(e.target.value as 'ethical' | 'coding')}
-        className="w-full bg-accent border border-border text-foreground rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-violet-500"
+        className="w-full bg-accent border border-border text-foreground rounded-lg p-3"
       >
         <option value="ethical">Ethical Scenario</option>
         <option value="coding">Coding Reliability / Hallucination</option>
       </select>
     </div>
 
-    {/* TEXTAREA */}
+    {/* SCENARIO DISPLAY */}
+    <div className="bg-accent border border-border rounded-lg p-4">
+      <p className="text-sm text-muted-foreground mb-1">Scenario:</p>
+      <p className="font-medium text-foreground">
+        {selectedScenario.scenario}
+      </p>
+    </div>
+
+    {/* USER RESPONSE */}
     <textarea
-      value={scenarioPrompt}
-      onChange={(e) => setScenarioPrompt(e.target.value)}
-      className="w-full h-36 bg-accent border border-border rounded-lg p-4 focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
+      placeholder="Write your ethical response..."
+      value={userResponse}
+      onChange={(e) => setUserResponse(e.target.value)}
+      className="w-full h-36 bg-accent border border-border rounded-lg p-4"
     />
 
     {/* BUTTON */}
     <button
-      onClick={handleEvaluateScenario}
-      disabled={isSubmitting || !scenarioPrompt.trim()}
-      className="bg-gradient-to-r from-violet-500 to-purple-600 text-white px-5 py-2 rounded-lg font-medium hover:shadow-lg hover:shadow-violet-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+      onClick={async () => {
+        if (!userResponse.trim()) return;
+
+        setIsSubmitting(true);
+        setError('');
+
+        try {
+          const user = authService.getCurrentUser();
+
+          const response = await apiClient.submitLevel3Scenario({
+            userId: user?.id || 'guest-user',
+            scenarioId: selectedScenario.id,
+            promptText: userResponse,
+            mode,
+          });
+
+          setAnalysisResult(response);
+
+          if (response.ethicalIntegrityScore >= 80) {
+            setLevelCompleted(3);
+          }
+
+        } catch (err) {
+          setError('Evaluation failed');
+        } finally {
+          setIsSubmitting(false);
+        }
+      }}
+      className="bg-gradient-to-r from-violet-500 to-purple-600 text-white px-5 py-2 rounded-lg"
     >
-      {isSubmitting ? 'Evaluating...' : 'Evaluate Ethics'}
+      {isSubmitting ? 'Evaluating...' : 'Evaluate Response'}
     </button>
 
   </div>
 
-  {/* RIGHT SIDE → Problem Cards */}
+  {/* RIGHT SIDE → SCENARIOS */}
   <div>
     <label className="block text-sm font-medium text-foreground mb-2">
-      Select Problem
+      Select Scenario
     </label>
 
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {problems.map((problem) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {scenarios.map((s) => (
         <div
-          key={problem.problem_id}
-          onClick={() => setSelectedProblemId(problem.problem_id)}
-          className={`cursor-pointer p-6 rounded-xl border transition-all
+          key={s.id}
+          onClick={() => setSelectedScenario(s)}
+          className={`cursor-pointer p-5 rounded-xl border transition-all
             ${
-              selectedProblemId === problem.problem_id
+              selectedScenario.id === s.id
                 ? "border-violet-500 bg-violet-500/10"
-                : "border-border bg-card hover:border-violet-400 hover:scale-[1.02]"
+                : "border-border bg-card hover:border-violet-400"
             }`}
         >
-          <div className="flex justify-between items-start mb-3">
-            <h3 className="text-xl font-bold text-foreground">
-              {problem.problem_id}
-            </h3>
-
-            <span
-              className={`text-xs px-2 py-1 rounded ${
-                problem.difficulty === "Easy"
-                  ? "bg-green-500/20 text-green-500"
-                  : problem.difficulty === "Medium"
-                  ? "bg-yellow-500/20 text-yellow-500"
-                  : "bg-red-500/20 text-red-500"
-              }`}
-            >
-              {problem.difficulty}
-            </span>
-          </div>
-
-          <p className="text-xl font-bold text-foreground">
-            {problem.title}
+          <h3 className="font-semibold">{s.title}</h3>
+          <p className="text-sm text-muted-foreground">
+            {s.scenario}
           </p>
         </div>
       ))}
     </div>
   </div>
+
+</div>
 
 </div>
 
