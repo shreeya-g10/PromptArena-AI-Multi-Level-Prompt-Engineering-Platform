@@ -1,11 +1,12 @@
 import express from "express";
+import { getUserData } from "../models/userData.js";
+
 const router = express.Router();
 
-router.get("/", (req, res) => {
-  res.json([
-    { name: "User1", score: 90 },
-    { name: "User2", score: 85 }
-  ]);
+// ✅ GET real stored data
+router.get("/", async (req, res) => {
+  const data = await getUserData();
+  res.json(data);
 });
 
 export default router;
