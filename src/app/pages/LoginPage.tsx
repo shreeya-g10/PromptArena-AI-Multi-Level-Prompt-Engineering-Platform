@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
-import { authService } from '../utils/auth';
+
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -18,14 +18,35 @@ export function LoginPage() {
     // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, 800));
 
-    const user = authService.login(email, password);
-    setIsLoading(false);
+    try {
+  const response = await fetch('http://localhost:3000/api/auth/login', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      username: username, // using email field as username
+      password,
+    }),
+  });
 
-    if (user) {
-      navigate('/dashboard');
-    } else {
-      setError('Invalid credentials. Please try again.');
-    }
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Login failed');
+  }
+
+  // ✅ store token
+  localStorage.setItem('token', data.token);
+localStorage.setItem('username', username); // ✅ ADD THIS
+  navigate('/dashboard');
+
+} catch (err: any) {
+  setError(err.message);
+}
+finally {
+    setIsLoading(false);
+  }
   };
 
   return (
@@ -49,24 +70,24 @@ export function LoginPage() {
           <h2 className="text-2xl font-semibold mb-6">Welcome Back</h2>
 
           <form onSubmit={handleLogin} className="space-y-5">
-            {/* Email Input */}
-            <div>
-              <label htmlFor="email" className="block text-sm mb-2">
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  required
-                  className="w-full pl-11 pr-4 py-3 bg-accent border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all"
-                />
-              </div>
-            </div>
+            {/* Username Input */}
+<div>
+  <label htmlFor="username" className="block text-sm mb-2">
+    Username
+  </label>
+  <div className="relative">
+    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
+    <input
+      id="username"
+      type="text"
+      value={username}
+      onChange={(e) => setUsername(e.target.value)}
+      placeholder="Enter username"
+      required
+      className="w-full pl-11 pr-4 py-3 bg-accent border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all"
+    />
+  </div>
+</div>
 
             {/* Password Input */}
             <div>

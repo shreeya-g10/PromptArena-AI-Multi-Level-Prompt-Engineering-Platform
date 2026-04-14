@@ -6,7 +6,7 @@ import { generateCode } from "../services/aiService";
 export {
    
     predictSuccess,
-    calculateEffectiveness,
+    calculateEffectiveness, 
     
 } from "./scoring";
 
