@@ -166,22 +166,26 @@ setSelectedProblemId(level1Problems[0]?.problem_id || '');
     </div>
   ))}
 </div>
-          {selectedProblem && (
-            <div className="mt-3 text-sm text-muted-foreground">
-              <p className="text-foreground mb-1">Expected Output: {selectedProblem.expected_output}</p>
-              <details className="bg-accent/40 border border-border rounded-lg p-3">
-                <summary className="cursor-pointer text-foreground font-medium">View Test Cases</summary>
-                <ul className="mt-2 space-y-1">
-                  {safeTestCases.map((testCase, index) => (
-                    <li key={index}>
-                      Input: <span className="text-foreground">{testCase.input}</span> {'->'} Expected:{' '}
-                      <span className="text-foreground">{testCase.expectedOutput}</span>
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            </div>
-          )}
+          {false && selectedProblem && (
+  <div className="mt-3 text-sm text-muted-foreground">
+    <p className="text-foreground mb-1">
+      Expected Output: {selectedProblem?.expected_output}
+    </p>
+    <details className="bg-accent/40 border border-border rounded-lg p-3">
+      <summary className="cursor-pointer text-foreground font-medium">
+        View Test Cases
+      </summary>
+      <ul className="mt-2 space-y-1">
+        {safeTestCases.map((testCase, index) => (
+          <li key={index}>
+            Input: <span className="text-foreground">{testCase.input}</span> {'->'} Expected:{' '}
+            <span className="text-foreground">{testCase.expectedOutput}</span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  </div>
+)}
         </div>
 
         {/* Main Content Grid */}
