@@ -1,5 +1,5 @@
 import express from "express";
-import UserData from "../models/UserData.js"; // ✅ MongoDB model
+import UserData from "../models/userData.js"; // ✅ MongoDB model
 
 const router = express.Router();
 

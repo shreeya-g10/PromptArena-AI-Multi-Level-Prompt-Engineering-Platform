@@ -1,5 +1,5 @@
 import { evaluatePrompt } from "../utils/evaluate.js";
-import UserData from "../models/UserData.js";
+import UserData from "../models/userData.js";
 
 export const handleLevel1 = async (req, res) => {
   try {
