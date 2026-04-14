@@ -1,13 +1,8 @@
 import express from "express";
+import { handleLevel2 } from "../controllers/level2Controller.js";
+
 const router = express.Router();
 
-router.post("/", (req, res) => {
-  const { data } = req.body;
-
-  res.json({
-    message: "Level 2 API working ✅",
-    received: data
-  });
-});
+router.post("/", handleLevel2);
 
 export default router;
