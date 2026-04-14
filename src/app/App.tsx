@@ -6,6 +6,7 @@ import { Level2Page } from './pages/Level2Page';
 import { Level3Page } from './pages/Level3Page';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { generateCode } from "./services/aiService";
+import { RegisterPage } from './pages/RegisterPage';
 
 generateCode("Write Python function to check prime number")
   .then(res => console.log(res))
@@ -17,6 +18,7 @@ export default function App() {
       <div className="dark min-h-screen">
         <Routes>
           <Route path="/" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route
             path="/dashboard"
             element={
