@@ -17,20 +17,31 @@ export function RegisterPage() {
     setError('');
     setIsLoading(true);
 
-    // simulate delay (same as login)
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    try {
+  const response = await fetch('http://localhost:3000/api/auth/register', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      username,
+      password,
+    }),
+  });
 
-    // ✅ fake register (demo mode)
-    if (username && email && password) {
-      localStorage.setItem(
-        'demoUser',
-        JSON.stringify({ username, email })
-      );
+  const data = await response.json();
 
-      navigate('/dashboard');
-    } else {
-      setError('Please fill all fields');
-    }
+  if (!response.ok) {
+    throw new Error(data.error || 'Registration failed');
+  }
+
+  // ✅ after register → go to login page
+  navigate('/');
+
+} catch (err: any) {
+  setError(err.message);
+}
+    
 
     setIsLoading(false);
   };
