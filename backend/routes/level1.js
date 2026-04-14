@@ -1,5 +1,6 @@
 import express from "express";
 import { handleLevel1 } from "../controllers/level1Controller.js";
+import { verifyToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -8,7 +9,7 @@ router.get("/", (req, res) => {
   res.send("Level1 working (use POST)");
 });
 
-// MAIN API
-router.post("/", handleLevel1);
+// 🔐 PROTECTED API
+router.post("/", verifyToken, handleLevel1);
 
 export default router;
