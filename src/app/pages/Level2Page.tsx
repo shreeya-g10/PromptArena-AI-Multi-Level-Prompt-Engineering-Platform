@@ -5,6 +5,7 @@ import { apiClient } from '../services/api';
 import { authService } from '../utils/auth';
 import type { CodingProblem, Level2Response, PromptVersion } from '../services/contracts';
 import { setLevelCompleted } from '../utils/progress';
+import { level2Problems } from "../data/problems";
 
 interface PromptSuggestion {
   title: string;
@@ -55,9 +56,8 @@ export function Level2Page() {
   useEffect(() => {
     const loadProblems = async () => {
       try {
-        const data = await apiClient.fetchProblems();
-        setProblems(data);
-        setSelectedProblemId(data[0]?.problem_id || '');
+        setProblems(level2Problems);
+setSelectedProblemId(level2Problems[0]?.problem_id || '');
       } catch {
         setError('Unable to load problems.');
       }

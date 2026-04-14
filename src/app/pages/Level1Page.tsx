@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Navbar } from '../components/Navbar';
 import { Send, Loader2, CheckCircle, XCircle } from 'lucide-react';
-import { apiClient } from '../services/api';
 import { authService } from '../utils/auth';
 import type { CodingProblem, Level1Response } from '../services/contracts';
 import { setLevelCompleted } from '../utils/progress';
 import { evaluatePrompt } from "../utils";
+import { level1Problems } from "../data/problems";
 
 export function Level1Page() {
   const [problems, setProblems] = useState<CodingProblem[]>([]);
@@ -24,10 +24,8 @@ export function Level1Page() {
   useEffect(() => {
     const loadProblems = async () => {
       try {
-        const data = await apiClient.fetchProblems();
-        const normalized = Array.isArray(data) ? data : [];
-        setProblems(normalized);
-        setSelectedProblemId(normalized[0]?.problem_id || '');
+        setProblems(level1Problems);
+setSelectedProblemId(level1Problems[0]?.problem_id || '');
       } catch {
         setError('Unable to load problems.');
       } finally {

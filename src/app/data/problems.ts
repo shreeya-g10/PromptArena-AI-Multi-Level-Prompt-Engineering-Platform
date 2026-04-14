@@ -36,3 +36,29 @@ export const problems20: CodingProblem[] = [
   { problem_id: '119', title: 'Word Ladder Steps', description: 'Return shortest transformation length between words.', difficulty: 'Hard', language: 'Python', expected_output: 'Integer', tags: ['graph', 'bfs'], test_cases: [{ input: 'begin=hit,end=cog', expectedOutput: '5' }] },
   { problem_id: '120', title: 'Top K Frequent', description: 'Return k most frequent elements.', difficulty: 'Hard', language: 'Python', expected_output: 'Array', tags: ['heap', 'hashmap'], test_cases: [{ input: 'nums=[1,1,1,2,2,3], k=2', expectedOutput: '[1,2]' }] },
 ];
+// ✅ Level-wise split (mixed difficulty)
+export const level1Problems: CodingProblem[] = [
+  problems20[0],  // Easy
+  problems20[9],  // Medium
+  problems20[2],
+  problems20[10],
+  problems20[4],
+  problems20[11],
+  problems20[6],
+  problems20[12],
+  problems20[1],
+  problems20[13],
+];
+
+export const level2Problems: CodingProblem[] = [
+  problems20[3],
+  problems20[14],
+  problems20[5],
+  problems20[15],
+  problems20[7],
+  problems20[16],
+  problems20[8],
+  problems20[17],
+  problems20[18],
+  problems20[19],
+];
