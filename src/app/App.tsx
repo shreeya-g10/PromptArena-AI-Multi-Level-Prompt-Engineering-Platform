@@ -5,12 +5,7 @@ import { Level1Page } from './pages/Level1Page';
 import { Level2Page } from './pages/Level2Page';
 import { Level3Page } from './pages/Level3Page';
 import { ProtectedRoute } from './components/ProtectedRoute';
-import { generateCode } from "./services/aiService";
 import { RegisterPage } from './pages/RegisterPage';
-
-generateCode("Write Python function to check prime number")
-  .then(res => console.log(res))
-  .catch(err => console.error(err));
 
 export default function App() {
   return (

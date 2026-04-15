@@ -14,7 +14,6 @@ import {
 import { mockAnalytics, mockLeaderboard } from '../utils/mockData';
 import { problems20 } from '../data/problems';
 import {
-  calculateEfficiency,
   evaluatePrompt,
   generateFeedback,
   trackPromptEvolution,
@@ -109,18 +108,24 @@ const mockApi: ApiClient = {
       structureScore: newEntry.score,
       timestamp: newEntry.timestamp,
     };
+    const promptScore = clamp(structureScore * 10, 0, 100);
+    const testScore = 55;
+    const reliabilityScore = Math.round(promptScore * 0.6 + testScore * 0.4);
     const evolutionHistory = evolved.map((entry) => ({
       version: entry.version,
-      promptText: entry.prompt,
-      structureScore: entry.score,
+      score: reliabilityScore,
+      promptScore,
       timestamp: entry.timestamp,
     }));
-    const reliabilityScore = clamp(50 + structureScore * 5, 0, 100);
     const attempts = Math.max(evolutionHistory.length, 1);
-    const efficiencyIndex = clamp(calculateEfficiency(reliabilityScore, attempts), 0, 100);
-    const firstPrompt = evolutionHistory[0]?.promptText || payload.promptText;
-    const firstScore = evolutionHistory[0]?.structureScore || structureScore;
-    const improvementPercent = clamp((structureScore - firstScore) * 10, 0, 100);
+    const efficiencyIndex =
+      reliabilityScore >= 80 ? Math.round(100 / attempts) : null;
+    const firstPrompt = evolved[0]?.prompt || payload.promptText;
+    const firstScore = evolved[0]?.score || structureScore;
+    const improvementPercent =
+      payload.previousVersions.length >= 1
+        ? Math.round(reliabilityScore - clamp(30 + firstScore * 5, 0, 100))
+        : null;
     const generated = generateFeedback(firstPrompt, payload.promptText);
 
     const feedback: string[] = [];
@@ -159,15 +164,22 @@ const mockApi: ApiClient = {
       newVersion,
       evolutionHistory,
       reliabilityScore,
+      promptScore,
+      testScore,
       efficiencyIndex,
+      attempts,
       problemRelevanceScore,
       relevanceNotes,
       feedback,
-      comparison: {
-        before: firstPrompt,
-        after: payload.promptText,
-        improvementPercent,
-      },
+      aiOutput: '# Mock mode — no live model\npass\n',
+      comparison:
+        reliabilityScore === 100 || attempts >= 3
+          ? {
+              before: firstPrompt,
+              after: payload.promptText,
+              improvementPercent,
+            }
+          : null,
     };
   },
 

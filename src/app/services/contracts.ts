@@ -46,7 +46,8 @@ export interface PromptVersion {
 export interface PromptComparison {
   before: string;
   after: string;
-  improvementPercent: number;
+  /** Reliability delta vs previous attempt (percentage points); null on first attempt */
+  improvementPercent: number | null;
 }
 
 export interface Level2Request {
@@ -60,16 +61,33 @@ export interface Level2Request {
   >;
 }
 
+/** Timeline entry: score = combined reliability % (0–100) */
+export interface Level2EvolutionEntry {
+  version: number;
+  score: number;
+  promptScore?: number | null;
+  timestamp: string;
+}
+
 export interface Level2Response {
-  
   newVersion: PromptVersion;
-  evolutionHistory: PromptVersion[];
+  evolutionHistory: Level2EvolutionEntry[];
   reliabilityScore: number;
-  efficiencyIndex: number;
+  promptScore?: number;
+  testScore?: number;
+  efficiencyIndex: number | null;
+  attempts?: number;
+  structureScore?: number;
+  effectivenessScore?: number;
+  testCasesPassed?: number;
+  totalTestCases?: number;
+  ethicalScore?: number;
+  hallucinationDetected?: boolean;
+  testCaseResults?: TestCaseResult[];
   problemRelevanceScore?: number;
   relevanceNotes?: string[];
   feedback: string[];
-  comparison: PromptComparison;
+  comparison: PromptComparison | null;
   aiOutput?: string;
 }
 

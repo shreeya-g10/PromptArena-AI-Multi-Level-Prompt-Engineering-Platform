@@ -6,6 +6,7 @@ const userSchema = new mongoose.Schema({
   prompt: String,
   generatedCode: String,
   structureScore: Number,
+  promptScore: Number,
   reliabilityScore: Number,
   effectivenessScore: Number,
   ethicalScore: Number,
