@@ -1,6 +1,16 @@
 import { execSync } from "child_process";
 import fs from "fs";
 
+/** Strip markdown fences and language tags from model output before execution */
+export function stripMarkdownCode(raw) {
+  if (!raw) return "";
+  let s = String(raw).trim();
+  s = s.replace(/^```(?:[\w+-]+)?\s*\r?\n?/i, "");
+  s = s.replace(/\r?\n?```\s*$/i, "");
+  s = s.replace(/```(?:python|py|javascript|js)?/gi, "").replace(/```/g, "");
+  return s.trim();
+}
+
 export function runTestCases(problem, code) {
 
   if (!problem || !problem.test_cases) {
@@ -18,8 +28,7 @@ export function runTestCases(problem, code) {
     const fileName = `temp_${Date.now()}_${index}.py`;
 
     try {
-  // ✅ CLEAN AI CODE
-  const cleanCode = code.replace(/```python|```/g, "");
+  const cleanCode = stripMarkdownCode(code);
 
   // ✅ Build executable Python script
   const pythonCode = `
