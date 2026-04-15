@@ -19,7 +19,7 @@ export async function generateCode(prompt) {
 
   const data = await response.json();
 
-  console.log("FULL RESPONSE:", data);
+
 
   return data?.choices?.[0]?.message?.content || "No response";
 }

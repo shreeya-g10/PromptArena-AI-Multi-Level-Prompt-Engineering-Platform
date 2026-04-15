@@ -18,8 +18,12 @@ export function runTestCases(problem, code) {
     const fileName = `temp_${Date.now()}_${index}.py`;
 
     try {
-      const pythonCode = `
-${code}
+  // ✅ CLEAN AI CODE
+  const cleanCode = code.replace(/```python|```/g, "");
+
+  // ✅ Build executable Python script
+  const pythonCode = `
+${cleanCode}
 
 try:
     result = ${functionName}(${formatInput(tc.input)})
@@ -28,38 +32,38 @@ except Exception as e:
     print("ERROR")
 `;
 
-      // create temp file
-      fs.writeFileSync(fileName, pythonCode);
+  // create temp file
+  fs.writeFileSync(fileName, pythonCode);
 
-      // execute python
-      const output = execSync(`python ${fileName}`)
-        .toString()
-        .trim()
-        .split("\n")
-        .pop(); // take last line only
+  // execute python
+  const output = execSync(`python3 ${fileName}`)
+    .toString()
+    .trim()
+    .split("\n")
+    .pop();
 
-      const expected = tc.expectedOutput.replace(/"/g, "").trim();
+  const expected = tc.expectedOutput.replace(/"/g, "").trim();
 
-      const isPass = output === expected;
+  const isPass = output === expected;
 
-      if (isPass) passed++;
+  if (isPass) passed++;
 
-      results.push({
-        input: tc.input,
-        expected,
-        actual: output,
-        passed: isPass
-      });
+  results.push({
+    input: tc.input,
+    expected,
+    actual: output,
+    passed: isPass
+  });
 
-    } catch {
-      results.push({
-        input: tc.input,
-        expected: tc.expectedOutput,
-        actual: "Error",
-        passed: false
-      });
-
-    } finally {
+} catch {
+  results.push({
+    input: tc.input,
+    expected: tc.expectedOutput,
+    actual: "Error",
+    passed: false
+  });
+}
+     finally {
       // 🔥 ALWAYS DELETE FILE (even if error happens)
       if (fs.existsSync(fileName)) {
         fs.unlinkSync(fileName);
