@@ -6,6 +6,7 @@ import { authService } from '../utils/auth';
 import type { CodingProblem, Level2Response, PromptVersion } from '../services/contracts';
 import { setLevelCompleted } from '../utils/progress';
 import { level2Problems } from "../data/problems";
+import { evaluatePrompt } from "../utils";
 
 interface PromptSuggestion {
   title: string;
@@ -50,6 +51,8 @@ export function Level2Page() {
   const [result, setResult] = useState<Level2Response | null>(null);
   const [versionMap, setVersionMap] = useState<Record<string, PromptVersion[]>>({});
   const [attemptMap, setAttemptMap] = useState<Record<string, number>>({});
+  const [localAttempts, setLocalAttempts] = useState<any[]>([]);
+
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [error, setError] = useState('');
 
@@ -73,48 +76,103 @@ setSelectedProblemId(level2Problems[0]?.problem_id || '');
   const currentAttempts = attemptMap[selectedProblemId] || 0;
 
   const handleOptimize = async () => {
-    if (!customPrompt.trim() || !selectedProblemId) return;
+  if (!customPrompt.trim() || !selectedProblem) return;
 
-    setIsOptimizing(true);
-    setError('');
-    try {
-      const currentUser = authService.getCurrentUser();
-      const response = await apiClient.submitLevel2Prompt({
-        userId: currentUser?.id || 'guest-user',
-        problemId: selectedProblemId,
-        promptText: customPrompt,
-        previousVersions: versionMap[selectedProblemId] || [],
-        problemContext: selectedProblem
-          ? {
-              title: selectedProblem.title,
-              description: selectedProblem.description,
-              expected_output: selectedProblem.expected_output,
-              tags: selectedProblem.tags,
-            }
-          : undefined,
-      });
-      setResult(response);
-      setVersionMap((prev) => ({
-        ...prev,
-        [selectedProblemId]: response.evolutionHistory,
-      }));
-      setAttemptMap((prev) => ({
-        ...prev,
-        [selectedProblemId]: (prev[selectedProblemId] || 0) + 1,
-      }));
-      if (response.reliabilityScore >= 80) {
-        setLevelCompleted(2);
-      }
-    } catch (optimizeError) {
-      setError(
-        optimizeError instanceof Error
-          ? optimizeError.message
-          : 'Unable to optimize prompt. Please try again.'
-      );
-    } finally {
-      setIsOptimizing(false);
+  setIsOptimizing(true);
+  setError("");
+
+  try {
+    const currentUser = authService.getCurrentUser();
+
+    const res = await fetch("http://localhost:3000/api/level2", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId: currentUser?.id || "guest-user",
+        prompt: customPrompt,
+        problem: selectedProblem,
+
+        // 🔥 TEMP until AI integrated
+        generatedCode: "print('test')",
+      }),
+    });
+
+    const data = await res.json();
+
+    console.log("Level2 API Response:", data);
+
+    // ✅ SET BACKEND RESPONSE
+    setResult({
+      ...data,
+      newVersion: {
+        version: (versionMap[selectedProblemId]?.length || 0) + 1,
+      },
+    });
+
+    // 🔥 KEEP YOUR LOCAL LOGIC (NO CONFLICT)
+    const newAttempt = {
+      prompt: customPrompt,
+      score: data.reliabilityScore / 10,
+      timestamp: new Date(),
+    };
+
+    setLocalAttempts((prev) => [...prev, newAttempt]);
+
+    setAttemptMap((prev) => ({
+      ...prev,
+      [selectedProblemId]: (prev[selectedProblemId] || 0) + 1,
+    }));
+
+    if (data.reliabilityScore >= 80) {
+      setLevelCompleted(2);
     }
-  };
+
+  } catch (err: any) {
+    console.error(err);
+    setError("Something went wrong");
+  } finally {
+    setIsOptimizing(false);
+  }
+};
+  // 🔥 FRONTEND EVOLUTION LOGIC
+const evolution = localAttempts.map((a, index) => ({
+  version: index + 1,
+  score: a.score
+}));
+
+// 🔥 EFFICIENCY
+const success = result ? result.reliabilityScore >= 80 : false;
+const efficiency =
+  success && localAttempts.length > 0
+    ? Math.round(100 / localAttempts.length)
+    : null;
+
+// 🔥 IMPROVEMENT FEEDBACK (simple logic)
+let improvementFeedback = [];
+if (localAttempts.length >= 2) {
+  const prev = localAttempts[localAttempts.length - 2].prompt;
+  const curr = localAttempts[localAttempts.length - 1].prompt;
+
+  if (curr.length > prev.length) improvementFeedback.push("Improved prompt detail");
+  if (curr.includes("function")) improvementFeedback.push("Defined function clearly");
+  if (curr.includes("input")) improvementFeedback.push("Added input constraints");
+}
+
+// 🔥 COMPARISON
+const comparison =
+  localAttempts.length >= 2
+    ? {
+        before: localAttempts[0].prompt,
+        after: localAttempts[localAttempts.length - 1].prompt,
+        improvementPercent: Math.round(
+          ((localAttempts[localAttempts.length - 1].prompt.length -
+            localAttempts[0].prompt.length) /
+            localAttempts[0].prompt.length) * 100
+        )
+      }
+    : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -317,7 +375,7 @@ setSelectedProblemId(level2Problems[0]?.problem_id || '');
                     Version: <span className="font-semibold">v{result.newVersion.version}</span>
                   </div>
                   <div className="bg-accent/50 border border-border rounded-lg p-3">
-                    Reliability: <span className="font-semibold">{result.reliabilityScore}%</span>
+                    Reliability: <span className="font-semibold">{result?.reliabilityScore ?? 0}%</span>
                   </div>
                   {(result.reliabilityScore >= 80 || currentAttempts >= 3) && (
                     <div className="bg-accent/50 border border-border rounded-lg p-3">
@@ -361,12 +419,12 @@ setSelectedProblemId(level2Problems[0]?.problem_id || '');
                 <div className="bg-card border border-border rounded-lg p-4">
                   <p className="font-semibold mb-2">Prompt Evolution Timeline</p>
                   <div className="space-y-2">
-                    {result.evolutionHistory.map((version) => (
+                    {result?.evolutionHistory?.map((version: any) => (
                       <div
                         key={version.version}
                         className="text-sm bg-accent/40 rounded p-2 flex items-center justify-between gap-4"
                       >
-                        <span>v{version.version} - Score {version.structureScore}/10</span>
+                        <span>v{version.version} - Score {version.structureScore ?? version.score}/10</span>
                         <span className="text-xs text-muted-foreground">
                           {new Date(version.timestamp).toLocaleString()}
                         </span>
@@ -374,6 +432,56 @@ setSelectedProblemId(level2Problems[0]?.problem_id || '');
                     ))}
                   </div>
                 </div>
+                {/* 🔥 LOCAL EVOLUTION (YOUR FEATURE) */}
+<div className="bg-card border border-border rounded-lg p-4 mt-4">
+  <p className="font-semibold mb-2">Frontend Evolution (Your Logic)</p>
+  {evolution.map((e) => (
+    <div key={e.version} className="text-sm">
+      Version {e.version} → Score {e.score}
+    </div>
+  ))}
+</div>
+
+{/* 🔥 EFFICIENCY */}
+{efficiency && (
+  <div className="bg-card border border-border rounded-lg p-4 mt-4">
+    <p className="font-semibold">Efficiency (Frontend)</p>
+    <p>{efficiency}%</p>
+  </div>
+)}
+
+{/* 🔥 FEEDBACK */}
+{improvementFeedback.length > 0 && (
+  <div className="bg-card border border-border rounded-lg p-4 mt-4">
+    <p className="font-semibold">AI Feedback (Frontend)</p>
+    <ul className="list-disc list-inside text-sm">
+      {improvementFeedback.map((f, i) => (
+        <li key={i}>{f}</li>
+      ))}
+    </ul>
+  </div>
+)}
+
+{/* 🤖 AI GENERATED CODE */}
+{(result as any)?.aiOutput && (
+  <div className="bg-black text-green-400 border border-border rounded-lg p-4 mt-4">
+    <p className="font-semibold mb-2">🤖 AI Generated Code</p>
+
+    <pre className="text-sm whitespace-pre-wrap overflow-x-auto">
+      {(result as any)?.aiOutput}
+    </pre>
+  </div>
+)}
+
+{/* 🔥 COMPARISON */}
+{comparison && (
+  <div className="bg-card border border-border rounded-lg p-4 mt-4">
+    <p className="font-semibold">Prompt Comparison (Frontend)</p>
+    <p>Improvement: {comparison.improvementPercent}%</p>
+    <p><b>Before:</b> {comparison.before}</p>
+    <p><b>After:</b> {comparison.after}</p>
+  </div>
+)}
               </div>
             )}
           </div>

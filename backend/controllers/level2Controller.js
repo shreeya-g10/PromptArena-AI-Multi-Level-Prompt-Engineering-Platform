@@ -1,6 +1,8 @@
 import { evaluatePrompt } from "../utils/evaluate.js";
 import UserData from "../models/userData.js";
 
+console.log("🔥 LEVEL 2 CONTROLLER RUNNING");
+
 export const handleLevel2 = async (req, res) => {
   try {
     const generateCodeFromAI = async (prompt, problem) => {
@@ -39,6 +41,7 @@ export const handleLevel2 = async (req, res) => {
   });
 
   const data = await response.json();
+  console.log("Level2 API Response:", data);
 
   return data.choices?.[0]?.message?.content || "";
 };

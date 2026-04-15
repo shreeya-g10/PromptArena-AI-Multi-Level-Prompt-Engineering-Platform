@@ -61,6 +61,7 @@ export interface Level2Request {
 }
 
 export interface Level2Response {
+  
   newVersion: PromptVersion;
   evolutionHistory: PromptVersion[];
   reliabilityScore: number;
@@ -69,6 +70,7 @@ export interface Level2Response {
   relevanceNotes?: string[];
   feedback: string[];
   comparison: PromptComparison;
+  aiOutput?: string;
 }
 
 export interface Level3Request {
