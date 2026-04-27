@@ -31,7 +31,7 @@ export function Level3Page() {
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const scenarios = [
+  const ethicalScenarios = [
   {
     id: "1",
     title: "Ransomware Request",
@@ -58,7 +58,35 @@ export function Level3Page() {
   }
 ];
 
-const [selectedScenario, setSelectedScenario] = useState(scenarios[0]);
+const codingScenarios = [
+  {
+    id: "5",
+    title: "Compilation Failure",
+    scenario:
+      "AI generated incorrect code. Compilation failed due to syntax errors and invalid function definitions. System detected hallucination: Compilation Error Detected."
+  },
+  {
+    id: "6",
+    title: "Fake Library Import",
+    scenario:
+      "AI generated code imports a library that does not exist. The model confidently explained it as valid. System detected hallucination: Invalid Library Import."
+  },
+  {
+    id: "7",
+    title: "Wrong Logic Output",
+    scenario:
+      "AI generated code compiles successfully but produces incorrect output for test cases like prime check returning True for 4 and 6."
+  },
+  {
+    id: "8",
+    title: "Missing Edge Case Handling",
+    scenario:
+      "AI generated code works for normal inputs but fails for edge cases like 0, negative values, and empty arrays. Reliability score is reduced."
+  }
+];
+const [selectedScenario, setSelectedScenario] = useState(ethicalScenarios[0]);
+const activeScenarios =
+  mode === "ethical" ? ethicalScenarios : codingScenarios;
 const [userResponse, setUserResponse] = useState("");
 
   useEffect(() => {
@@ -92,9 +120,22 @@ const [userResponse, setUserResponse] = useState("");
         mode,
       });
       setAnalysisResult(response);
-      if (response.ethicalIntegrityScore >= 80) {
-        setLevelCompleted(3);
-      }
+
+if (
+  mode === "ethical" &&
+  response.ethicalIntegrityScore &&
+  response.ethicalIntegrityScore >= 80
+) {
+  setLevelCompleted(3);
+}
+
+if (
+  mode === "coding" &&
+  response.reliabilityAdjustment &&
+  response.reliabilityAdjustment >= 70
+) {
+  setLevelCompleted(3);
+}
     } catch (submitError) {
       setError(
         submitError instanceof Error
@@ -134,11 +175,17 @@ const [userResponse, setUserResponse] = useState("");
         <div className="bg-card border border-border rounded-xl p-6 mb-8 text-card-foreground">
           <div className="flex items-center gap-2 mb-3">
             <ShieldCheck className="size-5 text-violet-500" />
-            <h2 className="text-xl font-semibold">Ethical Scenario Evaluation</h2>
+            <h2 className="text-xl font-semibold">
+  {mode === "ethical"
+    ? "Ethical Scenario Evaluation"
+    : "Coding Reliability & Hallucination Analysis"}
+</h2>
           </div>
           <p className="text-sm text-muted-foreground mb-4">
-            Submit a safety-focused prompt for the ethical challenge and check hallucination risk.
-          </p>
+  {mode === "ethical"
+    ? "Submit a safety-focused prompt for the ethical challenge and check hallucination risk."
+    : "Analyze AI-generated code failures, detect hallucinations, and evaluate reliability issues."}
+</p>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
   <div className="space-y-6 mb-6">
@@ -153,7 +200,19 @@ const [userResponse, setUserResponse] = useState("");
       </label>
       <select
         value={mode}
-        onChange={(e) => setMode(e.target.value as 'ethical' | 'coding')}
+        onChange={(e) => {
+  const newMode = e.target.value as "ethical" | "coding";
+  setMode(newMode);
+
+  if (newMode === "ethical") {
+    setSelectedScenario(ethicalScenarios[0]);
+  } else {
+    setSelectedScenario(codingScenarios[0]);
+  }
+
+  setAnalysisResult(null);
+  setUserResponse("");
+}}
         className="w-full bg-accent border border-border text-foreground rounded-lg p-3"
       >
         <option value="ethical">Ethical Scenario</option>
@@ -171,7 +230,11 @@ const [userResponse, setUserResponse] = useState("");
 
     {/* USER RESPONSE */}
     <textarea
-      placeholder="Write your ethical response..."
+    placeholder={
+  mode === "ethical"
+    ? "Write your ethical response..."
+    : "Analyze the coding reliability and hallucination issue..."
+}
       value={userResponse}
       onChange={(e) => setUserResponse(e.target.value)}
       className="w-full h-36 bg-accent border border-border rounded-lg p-4"
@@ -194,12 +257,23 @@ const [userResponse, setUserResponse] = useState("");
             promptText: userResponse,
             mode,
           });
+setAnalysisResult(response);
 
-          setAnalysisResult(response);
+if (
+  mode === "ethical" &&
+  response.ethicalIntegrityScore &&
+  response.ethicalIntegrityScore >= 80
+) {
+  setLevelCompleted(3);
+}
 
-          if (response.ethicalIntegrityScore >= 80) {
-            setLevelCompleted(3);
-          }
+if (
+  mode === "coding" &&
+  response.reliabilityAdjustment &&
+  response.reliabilityAdjustment >= 70
+) {
+  setLevelCompleted(3);
+}
 
         } catch (err) {
           setError('Evaluation failed');
@@ -221,7 +295,7 @@ const [userResponse, setUserResponse] = useState("");
     </label>
 
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {scenarios.map((s) => (
+      {activeScenarios.map((s) => (
         <div
           key={s.id}
           onClick={() => setSelectedScenario(s)}
@@ -245,34 +319,47 @@ const [userResponse, setUserResponse] = useState("");
 
 </div>
 
-          {analysisResult && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 text-sm">
-              <div className="bg-accent/50 border border-border rounded-lg p-3">
-                Ethical Integrity Score:{' '}
-                <span className="font-semibold">{analysisResult.ethicalIntegrityScore}%</span>
-              </div>
-              <div className="bg-accent/50 border border-border rounded-lg p-3">
-                Hallucination:{' '}
-                <span className="font-semibold">
-                  {analysisResult.hallucinationDetected ? 'Detected' : 'Not detected'}
-                </span>
-              </div>
-              <div className="bg-accent/50 border border-border rounded-lg p-3">
-                Reliability Adjustment:{' '}
-                <span className="font-semibold">{analysisResult.reliabilityAdjustment}%</span>
-              </div>
-            </div>
-          )}
+        {analysisResult && mode === "ethical" && (
+  <>
+    <div className="grid grid-cols-1 gap-4 mt-6">
+      <div className="bg-accent border border-border rounded-lg p-4">
+        <p className="text-lg font-medium">
+          Ethical Integrity Score: {analysisResult.ethicalIntegrityScore}%
+        </p>
+      </div>
+    </div>
 
-          {analysisResult && (
-            <p className="text-sm text-muted-foreground mt-3">{analysisResult.rationale}</p>
-          )}
-          {error && (
-            <div className="mt-3 text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded-lg p-3 flex items-center gap-2">
-              <AlertTriangle className="size-4" />
-              {error}
-            </div>
-          )}
+    <p className="mt-6 text-muted-foreground">
+      {analysisResult.rationale}
+    </p>
+  </>
+)}
+
+{analysisResult && mode === "coding" && (
+  <>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+      <div className="bg-accent border border-border rounded-lg p-4">
+        <p className="text-lg font-medium">
+          AI Hallucination:{" "}
+          {analysisResult.hallucinationDetected
+            ? "Detected"
+            : "Not Detected"}
+        </p>
+      </div>
+
+      <div className="bg-accent border border-border rounded-lg p-4">
+        <p className="text-lg font-medium">
+          Reliability Score: {analysisResult.reliabilityAdjustment}%
+        </p>
+      </div>
+    </div>
+
+    <p className="mt-6 text-muted-foreground">
+      {analysisResult.rationale}
+    </p>
+  </>
+)}
+
         </div>
 
         {/* Stats Grid */}

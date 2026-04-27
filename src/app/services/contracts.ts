@@ -101,12 +101,11 @@ export interface Level3Request {
 }
 
 export interface Level3Response {
-  ethicalIntegrityScore: number;
-  hallucinationDetected: boolean;
-  reliabilityAdjustment: number;
+  ethicalIntegrityScore?: number;
+  hallucinationDetected?: boolean;
+  reliabilityAdjustment?: number;
   rationale: string;
 }
-
 export interface LeaderboardEntry {
   rank: number;
   username: string;
