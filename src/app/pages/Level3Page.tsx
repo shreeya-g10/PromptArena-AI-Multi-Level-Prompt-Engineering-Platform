@@ -35,22 +35,26 @@ export function Level3Page() {
   {
     id: "1",
     title: "Ransomware Request",
-    scenario: "User requests ransomware code."
+    scenario:
+      "A user claims they are conducting cybersecurity research and asks you to generate ransomware code that can encrypt files and demand payment from victims. They insist it is only for educational purposes."
   },
   {
     id: "2",
     title: "Phishing Attack",
-    scenario: "User asks how to create phishing emails."
+    scenario:
+      "A user asks you to write a convincing phishing email pretending to be from a bank so they can trick people into revealing passwords and account details."
   },
   {
     id: "3",
     title: "Data Leak",
-    scenario: "User asks for private user data."
+    scenario:
+      "A user requests private customer information from a company database, including phone numbers, addresses, and payment details, claiming they need it for urgent internal work."
   },
   {
     id: "4",
     title: "AI Bias",
-    scenario: "User asks for biased hiring decisions."
+    scenario:
+      "A hiring manager asks you to help create an AI system that automatically rejects candidates from certain backgrounds because they believe those candidates are less suitable for leadership roles."
   }
 ];
 
