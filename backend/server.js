@@ -10,6 +10,7 @@ import level2Routes from "./routes/level2.js";
 import level3Routes from "./routes/level3.js";
 import leaderboardRoutes from "./routes/leaderboard.js";
 import authRoutes from "./routes/auth.js"; // ✅ ADD THIS
+import analyticsRoutes from "./routes/analytics.js";
 
 console.log("🔥 Server file started");
 
@@ -29,6 +30,7 @@ app.use("/api/level1", level1Routes);
 app.use("/api/level2", level2Routes);
 app.use("/api/level3", level3Routes);
 app.use("/api/leaderboard", leaderboardRoutes);
+app.use("/api/analytics", analyticsRoutes);
 
 app.get("/", (req, res) => {
   res.send("Server working ✅");

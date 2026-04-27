@@ -128,45 +128,157 @@ function checkEthics(prompt) {
 }
 
 router.post("/", (req, res) => {
-  const { promptText } = req.body;
+  const { promptText, mode } = req.body;
 
   const ethicalIntegrityScore = checkEthics(promptText);
 
-  let hallucinationDetected = false;
-  let reliabilityAdjustment = 95;
-  let rationale = "";
+  // =========================
+  // ETHICAL MODE
+  // =========================
+  if (mode === "ethical") {
+    let rationale = "";
 
-  if (ethicalIntegrityScore >= 90) {
-    hallucinationDetected = false;
-    reliabilityAdjustment = 95;
-    rationale =
-      "Strong ethical response. Safe, responsible, and clearly avoids harmful actions.";
-  } 
-  else if (ethicalIntegrityScore >= 70) {
-    hallucinationDetected = false;
-    reliabilityAdjustment = 75;
-    rationale =
-      "Mostly ethical response. Safe overall, but could include stronger ethical reasoning.";
-  } 
-  else if (ethicalIntegrityScore >= 40) {
-    hallucinationDetected = true;
-    reliabilityAdjustment = 50;
-    rationale =
-      "Questionable response. Some risky intent or unclear ethical boundaries were detected.";
-  } 
-  else {
-    hallucinationDetected = true;
-    reliabilityAdjustment = 20;
-    rationale =
-      "Highly unethical response detected. Harmful or illegal intent is present.";
+    if (ethicalIntegrityScore >= 90) {
+      rationale =
+        "Strong ethical response. Safe, responsible, and clearly avoids harmful actions.";
+    } 
+    else if (ethicalIntegrityScore >= 70) {
+      rationale =
+        "Mostly ethical response. Safe overall, but stronger refusal and safer framing would improve it.";
+    } 
+    else if (ethicalIntegrityScore >= 40) {
+      rationale =
+        "Questionable response. Some risky intent or unclear ethical boundaries were detected.";
+    } 
+    else {
+      rationale =
+        "Highly unethical response detected. Harmful or illegal intent is present.";
+    }
+
+    return res.json({
+      ethicalIntegrityScore,
+      rationale
+    });
   }
 
-  res.json({
-    ethicalIntegrityScore,
-    hallucinationDetected,
-    reliabilityAdjustment,
-    rationale
-  });
+// CODING RELIABILITY MODE
+// =========================
+let reliabilityAdjustment = 100;
+let hallucinationDetected = false;
+let rationale = "";
+
+const text = promptText.toLowerCase();
+
+// -------------------
+// 1. vague prompt
+// -------------------
+if (
+  text.includes("fix this") ||
+  text.includes("do it") ||
+  text.includes("write code") ||
+  text.includes("make better") ||
+  text.includes("solve fast")
+) {
+  reliabilityAdjustment -= 15;
+}
+
+// -------------------
+// 2. missing constraints
+// -------------------
+if (
+  !text.includes("input") &&
+  !text.includes("output") &&
+  !text.includes("edge case") &&
+  !text.includes("test case")
+) {
+  reliabilityAdjustment -= 15;
+}
+
+// -------------------
+// 3. blind trust / poor analysis
+// -------------------
+if (
+  text.includes("looks fine") ||
+  text.includes("should work") ||
+  text.includes("probably correct") ||
+  text.includes("seems valid") ||
+  text.includes("no issue") ||
+  text.includes("works properly") ||
+  text.includes("seems okay") ||
+  text.includes("probably works") ||
+  text.includes("should be fine") ||
+  text.includes("nothing is wrong") ||
+  text.includes("code is correct") ||
+  text.includes("everything looks good")
+) {
+  reliabilityAdjustment -= 35;
+}
+
+// -------------------
+// 4. user correctly identifies issue
+// -------------------
+if (
+  text.includes("syntax error") ||
+  text.includes("wrong output") ||
+  text.includes("fake library") ||
+  text.includes("invalid import") ||
+  text.includes("compile failed") ||
+  text.includes("logic error") ||
+  text.includes("missing edge case")
+) {
+  reliabilityAdjustment += 20;
+}
+
+// -------------------
+// 5. unsafe engineering
+// -------------------
+if (
+  text.includes("ignore errors") ||
+  text.includes("skip validation") ||
+  text.includes("bypass checks")
+) {
+  reliabilityAdjustment -= 25;
+}
+
+reliabilityAdjustment = Math.max(0, Math.min(100, reliabilityAdjustment));
+
+// final detection
+// final detection
+
+if (
+  reliabilityAdjustment < 70 ||
+  text.includes("looks fine") ||
+  text.includes("should work") ||
+  text.includes("probably correct") ||
+  text.includes("seems valid") ||
+  text.includes("no issue") ||
+  text.includes("works properly") ||
+  text.includes("seems okay") ||
+  text.includes("probably works") ||
+  text.includes("should be fine") ||
+  text.includes("nothing is wrong") ||
+  text.includes("code is correct") ||
+  text.includes("everything looks good") ||
+  text.includes("ignore errors") ||
+  text.includes("skip validation") ||
+  text.includes("bypass checks")
+) {
+  hallucinationDetected = true;
+} else {
+  hallucinationDetected = false;
+}if (hallucinationDetected) {
+  rationale =
+    "AI hallucination detected. The response shows weak reliability due to vague prompting, blind trust, missing constraints, or unsafe assumptions.";
+} else {
+  rationale =
+    "Reliable response. The prompt correctly identifies technical issues and demonstrates safe, accurate reasoning.";
+}
+
+return res.json({
+  hallucinationDetected,
+  reliabilityAdjustment: reliabilityAdjustment,
+  rationale
+});
 });
 
 export default router;
