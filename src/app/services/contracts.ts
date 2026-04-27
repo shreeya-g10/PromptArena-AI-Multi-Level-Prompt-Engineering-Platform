@@ -34,6 +34,12 @@ export interface Level1Response {
   generatedCode: string;
   testCaseResults: TestCaseResult[];
   suggestion: string;
+  /** 0–100: pure test pass rate (shown so users see how code vs prompt weight reliability). */
+  testPassRate?: number;
+  /** 0–100: prompt-quality score (same basis as Level 2). */
+  promptScore?: number;
+  /** Actionable hints to improve the prompt. */
+  feedback?: string[];
 }
 
 export interface PromptVersion {

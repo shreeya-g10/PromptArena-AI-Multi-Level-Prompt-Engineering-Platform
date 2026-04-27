@@ -11,8 +11,7 @@ import type {
 } from '../services/contracts';
 import { setLevelCompleted } from '../utils/progress';
 import { level2Problems } from "../data/problems";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+import { apiPath } from '../utils/apiBase';
 
 interface Level2HistoryRecord {
   version: number;
@@ -135,7 +134,9 @@ export function Level2Page() {
     const uid = currentUser?.id || 'guest-user';
     try {
       const res = await fetch(
-        `${API_BASE}/api/level2/history?userId=${encodeURIComponent(uid)}&problemId=${encodeURIComponent(problemId)}`
+        apiPath(
+          `/api/level2/history?userId=${encodeURIComponent(uid)}&problemId=${encodeURIComponent(problemId)}`
+        )
       );
       const data = (await res.json()) as Level2HistoryApiResponse & {
         error?: string;
@@ -181,7 +182,7 @@ export function Level2Page() {
     try {
       const currentUser = authService.getCurrentUser();
 
-      const res = await fetch(`${API_BASE}/api/level2`, {
+      const res = await fetch(apiPath('/api/level2'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

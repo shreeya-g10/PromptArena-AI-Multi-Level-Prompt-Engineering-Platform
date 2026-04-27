@@ -1,3 +1,5 @@
+import { apiPath } from '../utils/apiBase';
+
 export async function generateCode(prompt) {
   const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 
@@ -19,7 +21,38 @@ export async function generateCode(prompt) {
 
   const data = await response.json();
 
-
-
   return data?.choices?.[0]?.message?.content || "No response";
 }
+export const generateCodeFromAI = async (prompt, problem, token) => {
+  let response;
+  try {
+    response = await fetch(apiPath("/api/level1"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        prompt,
+        problem
+      })
+    });
+  } catch {
+    throw new Error(
+      "Cannot reach the API server. From the project root, run the backend: cd backend && npm run dev (port 3000), then reload this page."
+    );
+  }
+
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error("Invalid response from server.");
+  }
+
+  if (!response.ok) {
+    throw new Error(data?.error || "Failed to evaluate prompt");
+  }
+
+  return data;
+};

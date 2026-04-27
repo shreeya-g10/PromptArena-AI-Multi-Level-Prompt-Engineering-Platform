@@ -198,7 +198,7 @@ export const handleLevel2 = async (req, res) => {
       timestamp: new Date().toISOString(),
     });
 
-    const smartFeedback = buildSmartFeedbackGaps(prompt);
+    const smartFeedback = buildSmartFeedbackGaps(prompt, problem);
     const evolutionHints = [];
     if (previousAttempts.length >= 1) {
       const prev = previousAttempts[previousAttempts.length - 1].prompt;

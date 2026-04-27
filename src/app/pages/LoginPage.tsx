@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
+import { apiPath } from '../utils/apiBase';
 
 
 export function LoginPage() {
@@ -19,7 +20,7 @@ export function LoginPage() {
     await new Promise((resolve) => setTimeout(resolve, 800));
 
     try {
-  const response = await fetch('http://localhost:3000/api/auth/login', {
+  const response = await fetch(apiPath('/api/auth/login'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
