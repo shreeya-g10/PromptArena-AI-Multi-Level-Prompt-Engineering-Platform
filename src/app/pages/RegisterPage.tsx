@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, ArrowRight } from 'lucide-react';
+import { apiPath } from '../utils/apiBase';
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -18,7 +19,7 @@ export function RegisterPage() {
     setIsLoading(true);
 
     try {
-  const response = await fetch('http://localhost:3000/api/auth/register', {
+  const response = await fetch(apiPath('/api/auth/register'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Navbar } from '../components/Navbar';
 import { Send, Loader2, CheckCircle, XCircle } from 'lucide-react';
-import { authService } from '../utils/auth';
 import type { CodingProblem, Level1Response } from '../services/contracts';
 import { setLevelCompleted } from '../utils/progress';
-import { evaluatePrompt } from "../utils";
+import { generateCodeFromAI } from "../services/aiService";
 import { level1Problems } from "../data/problems";
 
 export function Level1Page() {
@@ -18,8 +17,6 @@ export function Level1Page() {
   const [attempts, setAttempts] = useState(0);
   const [lowScoreAttempts, setLowScoreAttempts] = useState(0);
   const [prompt, setPrompt] = useState("");
-  const [output, setOutput] = useState("");
-  const [score, setScore] = useState(0);
 
   useEffect(() => {
     const loadProblems = async () => {
@@ -48,24 +45,58 @@ setSelectedProblemId(level1Problems[0]?.problem_id || '');
 
   try {
     const nextAttempts = attempts + 1;
+    const token = localStorage.getItem("token");
 
-    const response = await evaluatePrompt(prompt, selectedProblem?.description || "");
+    if (!token) {
+      throw new Error("Please login again to continue.");
+    }
 
-   const formattedResponse: any = {
-  structureScore: response.structureScore,
-  successProbability: response.successProbability,
-  generatedCode: response.aiOutput,
-  reliabilityScore: response.reliabilityScore,
-  effectivenessScore: response.effectivenessScore,
-  testCasesPassed: response.testCasesPassed,
-  totalTestCases: response.totalTestCases,
+    const response = await generateCodeFromAI(prompt, selectedProblem, token);
+    const raw = response as Record<string, unknown>;
+
+   const feedbackList = Array.isArray(response.feedback)
+    ? (response.feedback as string[])
+    : [];
+    const reliabilityFromApi =
+      typeof response.reliabilityScore === 'number'
+        ? response.reliabilityScore
+        : typeof raw.reliability === 'number'
+          ? raw.reliability
+          : 0;
+    const effectivenessFromApi =
+      typeof response.effectivenessScore === 'number'
+        ? response.effectivenessScore
+        : typeof raw.effectiveness === 'number'
+          ? raw.effectiveness
+          : 0;
+    const promptLower = prompt.trim().toLowerCase();
+    const mentionsEdges = /edge|negative|zero|null|constraint|invalid|boundary/.test(
+      promptLower
+    );
+
+   const formattedResponse: Level1Response = {
+  structureScore: response.structureScore ?? 0,
+  successProbability: response.successProbability ?? 0,
+  generatedCode: response.generatedCode ?? "",
+  reliabilityScore: reliabilityFromApi,
+  effectivenessScore: effectivenessFromApi,
+  testCasesPassed: response.testCasesPassed ?? 0,
+  totalTestCases: response.totalTestCases ?? 0,
+  testCaseResults: response.testCaseResults ?? [],
+  testPassRate: typeof response.testPassRate === 'number' ? response.testPassRate : undefined,
+  promptScore: typeof response.promptScore === 'number' ? response.promptScore : undefined,
+  feedback: feedbackList,
 
   suggestion:
-  response.structureScore < 4
-    ? "Specify language, input/output and constraints."
-    : response.structureScore < 7
-    ? "Try adding edge cases and expected behavior."
-    : "Well-structured prompt!",
+    feedbackList.length > 0
+      ? 'Review the feedback below and revise your prompt.'
+      : (response.structureScore ?? 0) < 4
+        ? 'Specify language, input/output and constraints.'
+        : (response.structureScore ?? 0) < 7
+          ? mentionsEdges
+            ? 'You hinted at edge cases; spell out return type, inputs, and any algorithm details (e.g. check divisors up to √n) to raise your structure score.'
+            : 'Try adding edge cases and expected behavior.'
+          : 'Well-structured prompt!',
 };
 
     setResult(formattedResponse);
@@ -250,12 +281,28 @@ setSelectedProblemId(level1Problems[0]?.problem_id || '');
                     <span className="font-semibold">
                       {result.testCasesPassed}/{result.totalTestCases}
                     </span>
+                    {typeof result.testPassRate === 'number' && (
+                      <span className="block mt-1 text-muted-foreground">
+                        Code test pass rate: {result.testPassRate}% (reliability is ~82% from tests and ~18% from prompt quality, so it tracks generated code while still rewarding a clear specification)
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 <div className="bg-accent/50 rounded-lg p-4 font-mono text-sm whitespace-pre-wrap max-h-64 overflow-y-auto">
                   {result.generatedCode}
                 </div>
+
+                {result.feedback && result.feedback.length > 0 && (
+                  <div className="bg-violet-500/10 border border-violet-500/25 rounded-lg p-4">
+                    <p className="text-sm font-semibold text-foreground mb-2">How to improve your prompt</p>
+                    <ul className="list-disc list-inside space-y-1.5 text-sm text-muted-foreground">
+                      {result.feedback.map((line, i) => (
+                        <li key={i}>{line}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 <p className="text-sm text-muted-foreground">{result.suggestion}</p>
 
