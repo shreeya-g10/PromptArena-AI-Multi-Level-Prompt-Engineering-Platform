@@ -4,8 +4,10 @@ import { DashboardPage } from './pages/DashboardPage';
 import { Level1Page } from './pages/Level1Page';
 import { Level2Page } from './pages/Level2Page';
 import { Level3Page } from './pages/Level3Page';
+import { AnalyticsPage } from './pages/AnalyticsPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { RegisterPage } from './pages/RegisterPage';
+
 
 export default function App() {
   return (
@@ -46,6 +48,14 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+  path="/analytics"
+  element={
+    <ProtectedRoute>
+      <AnalyticsPage />
+    </ProtectedRoute>
+  }
+/>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
