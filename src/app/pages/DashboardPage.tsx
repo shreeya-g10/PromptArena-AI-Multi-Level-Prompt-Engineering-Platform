@@ -71,7 +71,7 @@ export function DashboardPage() {
       <div className="max-w-7xl mx-auto px-6 py-12">
         {/* Welcome Section */}
         <div className="mb-12">
-          <h1 className="text-4xl font-bold mb-3">
+          <h1 className="text-4xl font-bold text-white mb-3">
             Welcome back, {currentUser?.username}!
           </h1>
           <p className="text-muted-foreground text-lg">
@@ -126,6 +126,15 @@ export function DashboardPage() {
             })}
           </div>
         </div>
+        {/* Analytics Button Section */}
+<div className="mb-12 flex justify-center">
+  <button
+    onClick={() => navigate("/analytics")}
+    className="px-8 py-4 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold text-lg transition-all duration-200 shadow-lg"
+  >
+    View Analytics Dashboard →
+  </button>
+</div>
 
         {/* Leaderboard Section */}
         <div className="bg-card border border-border rounded-2xl p-8">
@@ -134,7 +143,7 @@ export function DashboardPage() {
               <Trophy className="size-5 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-semibold">Leaderboard</h2>
+              <h2 className="text-2xl font-semibold text-white">Leaderboard</h2>
               <p className="text-muted-foreground text-sm">
                 Top prompt engineers this month
               </p>
