@@ -26,7 +26,7 @@ export async function generateCode(prompt) {
 export const generateCodeFromAI = async (prompt, problem, token) => {
   let response;
   try {
-    response = await fetch(apiPath("/api/level1"), {
+    response = await fetch(apiPath("/level1"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

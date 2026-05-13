@@ -127,9 +127,12 @@ ${prompt}
 
 IMPORTANT:
 - Solve THIS problem only
-- Return only code
+- Return only raw Python function code
 - Do NOT use markdown code fences
 - Do NOT explain anything
+- Do NOT use input()
+- Do NOT use print()
+- Do NOT include example usage
 `,
         },
       ],

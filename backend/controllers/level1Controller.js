@@ -30,11 +30,37 @@ export const handleLevel1 = async (req, res) => {
       body: JSON.stringify({
         model: "openai/gpt-3.5-turbo",
         messages: [
-          {
-            role: "user",
-            content: prompt
-          }
-        ]
+  {
+    role: "system",
+    content: `
+You are a Python coding assistant.
+
+Rules:
+- Return ONLY raw Python function code
+- Do NOT include explanations
+- Do NOT include markdown
+- Do NOT use input()
+- Do NOT use print()
+- Do NOT include example usage
+- Only define the required function
+`
+  },
+  {
+    role: "user",
+    content: `
+Problem Title: ${problem?.title}
+
+Problem Description:
+${problem?.description}
+
+Expected Output:
+${problem?.expected_output}
+
+User Prompt:
+${prompt}
+`
+  }
+]
       })
     });
 
