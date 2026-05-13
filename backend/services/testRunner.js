@@ -28,7 +28,17 @@ export function runTestCases(problem, code) {
     const fileName = `temp_${Date.now()}_${index}.py`;
 
     try {
-  const cleanCode = stripMarkdownCode(code);
+  let cleanCode = stripMarkdownCode(code);
+
+cleanCode = cleanCode
+  .split("\n")
+  .filter(
+    (line) =>
+      !line.includes("input(") &&
+      !line.includes("print(") &&
+      !line.includes("Enter a number")
+  )
+  .join("\n");
 
   // ✅ Build executable Python script
   const pythonCode = `
@@ -45,7 +55,7 @@ except Exception as e:
   fs.writeFileSync(fileName, pythonCode);
 
   // execute python
-  const output = execSync(`python3 ${fileName}`)
+  const output = execSync(`py ${fileName}`)
     .toString()
     .trim()
     .split("\n")

@@ -166,14 +166,14 @@ export function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {leaderboard.map((user) => {
+                {leaderboard.map((user, index) => {
                   const isTop3 = user.rank <= 3;
                   const isCurrentUser =
                     currentUser?.username === user.username;
 
                   return (
                     <tr
-                      key={user.rank}
+                      key={`${index}-${user.username || 'user'}`}
                       className={`border-b border-border/50 transition-colors ${
                         isCurrentUser
                           ? 'bg-violet-500/10'
@@ -210,9 +210,11 @@ export function DashboardPage() {
                                 : 'bg-accent text-foreground'
                             }`}
                           >
-                            {user.username.charAt(0).toUpperCase()}
+                            {(user.username || 'U').charAt(0).toUpperCase()}
                           </div>
-                          <span className="font-medium text-foreground">{user.username}</span>
+                          <span className="font-medium text-foreground">
+  {user.username || 'Unknown User'}
+</span>
                           {isCurrentUser && (
                             <span className="text-xs bg-violet-500/20 text-violet-500 px-2 py-1 rounded">
                               You
@@ -221,7 +223,7 @@ export function DashboardPage() {
                         </div>
                       </td>
                       <td className="py-4 px-4 text-right font-semibold text-foreground">
-                        {user.score.toLocaleString()}
+                        {(user.score || 0).toLocaleString()}
                       </td>
                     </tr>
                   );

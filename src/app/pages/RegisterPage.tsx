@@ -19,7 +19,7 @@ export function RegisterPage() {
     setIsLoading(true);
 
     try {
-  const response = await fetch(apiPath('/api/auth/register'), {
+  const response = await fetch(apiPath('/auth/register'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

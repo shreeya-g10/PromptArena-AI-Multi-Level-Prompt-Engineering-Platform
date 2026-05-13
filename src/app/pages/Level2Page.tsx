@@ -135,7 +135,7 @@ export function Level2Page() {
     try {
       const res = await fetch(
         apiPath(
-          `/api/level2/history?userId=${encodeURIComponent(uid)}&problemId=${encodeURIComponent(problemId)}`
+          `/level2/history?userId=${encodeURIComponent(uid)}&problemId=${encodeURIComponent(problemId)}`
         )
       );
       const data = (await res.json()) as Level2HistoryApiResponse & {
@@ -182,7 +182,7 @@ export function Level2Page() {
     try {
       const currentUser = authService.getCurrentUser();
 
-      const res = await fetch(apiPath('/api/level2'), {
+      const res = await fetch(apiPath('/level2'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
