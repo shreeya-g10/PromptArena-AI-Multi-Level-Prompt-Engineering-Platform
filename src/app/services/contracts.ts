@@ -98,20 +98,57 @@ export interface Level2Response {
   aiOutput?: string;
 }
 
+export interface Level3CodingProblem {
+  problemId: string;
+  title: string;
+  summary: string;
+  sampleUserPrompt: string;
+  sampleAiResponse: string;
+  groundTruthHallucination: boolean;
+  expectedReasonKeywords: string[];
+  antiPatterns: string[];
+}
+
 export interface Level3Request {
   userId: string;
   scenarioId: string;
-  promptText: string;
+  /** Legacy / ethical free-text; also fallback when reasonExplanation is empty */
+  promptText?: string;
   problemId?: string;
   mode?: 'ethical' | 'coding';
   generatedCode?: string;
+  /** Step 1 — prompt the user sent to the coding assistant */
+  userPrompt?: string;
+  /** Step 2 — AI-generated code or answer to analyze */
+  aiResponseText?: string;
+  /** Reflection: does the learner believe the AI output hallucinates? */
+  believesHallucination?: boolean;
+  /** Reflection: short justification */
+  reasonExplanation?: string;
 }
 
 export interface Level3Response {
   ethicalIntegrityScore?: number;
+  /** Intrinsic scan of pasted AI output */
   hallucinationDetected?: boolean;
+  intrinsicHallucination?: boolean;
+  /** Authoritative label for the selected exercise snippet */
+  groundTruthHallucination?: boolean;
+  /** Whether learner Yes/No matches ground truth (null if not submitted) */
+  userHallucinationAnswerCorrect?: boolean | null;
+  believesHallucination?: boolean | null;
+  reasonQualityScore?: number;
+  reasonQualityLabel?: 'correct' | 'partial' | 'incorrect';
+  matchedKeywords?: string[];
+  hitAntiPatterns?: string[];
+  reliabilityScore?: number;
+  outputQualityScore?: number;
+  securityRating?: number;
+  compositeScore?: number;
+  /** Same as compositeScore; kept for older UI expectations */
   reliabilityAdjustment?: number;
   rationale: string;
+  userPromptReceived?: string;
 }
 export interface LeaderboardEntry {
   rank: number;

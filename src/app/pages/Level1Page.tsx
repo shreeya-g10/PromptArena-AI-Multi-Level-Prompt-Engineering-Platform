@@ -283,7 +283,7 @@ setSelectedProblemId(level1Problems[0]?.problem_id || '');
                     </span>
                     {typeof result.testPassRate === 'number' && (
                       <span className="block mt-1 text-muted-foreground">
-                        Code test pass rate: {result.testPassRate}% (reliability is ~82% from tests and ~18% from prompt quality, so it tracks generated code while still rewarding a clear specification)
+                        Code test pass rate: {result.testPassRate}% (reliability blends mostly test pass rate with a small prompt-quality term and is capped so failures dominate)
                       </span>
                     )}
                   </div>

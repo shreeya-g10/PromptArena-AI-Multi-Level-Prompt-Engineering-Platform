@@ -28,12 +28,95 @@ export const problems20: CodingProblem[] = [
   { problem_id: '111', title: 'Anagram Check', description: 'Check if two strings are anagrams.', difficulty: 'Medium', language: 'Python', expected_output: 'Boolean', tags: ['strings'], test_cases: [{ input: '"listen", "silent"', expectedOutput: 'True' }, { input: '"rat", "car"', expectedOutput: 'False' }] },
   { problem_id: '112', title: 'Merge Sorted Arrays', description: 'Merge two sorted arrays into one sorted array.', difficulty: 'Medium', language: 'Python', expected_output: 'Sorted array', tags: ['arrays', 'two-pointers'], test_cases: [{ input: '[1,3,5],[2,4,6]', expectedOutput: '[1,2,3,4,5,6]' }] },
   { problem_id: '113', title: 'Binary Search', description: 'Return index of target in sorted array else -1.', difficulty: 'Medium', language: 'Python', expected_output: 'Index', tags: ['search'], test_cases: [{ input: 'arr=[1,2,3,4,5], target=4', expectedOutput: '3' }, { input: 'arr=[1,2,3], target=9', expectedOutput: '-1' }] },
-  { problem_id: '114', title: 'Longest Common Prefix', description: 'Find longest common prefix among strings.', difficulty: 'Medium', language: 'Python', expected_output: 'String', tags: ['strings'], test_cases: [{ input: '["flower","flow","flight"]', expectedOutput: '"fl"' }, { input: '["dog","racecar","car"]', expectedOutput: '""' }] },
+  { problem_id: '114', title: 'Longest Common Prefix', description: 'Find longest common prefix among strings.', difficulty: 'Medium', language: 'Python', expected_output: 'String', tags: ['strings'], test_cases: [{ input: '["flower","flow","flight"]', expectedOutput: '"fl"' }, { input: '["dog","racecar","car"]', expectedOutput: '' }] },
   { problem_id: '115', title: 'Rotate Array', description: 'Rotate array right by k steps.', difficulty: 'Medium', language: 'Python', expected_output: 'Array', tags: ['arrays'], test_cases: [{ input: 'nums=[1,2,3,4,5], k=2', expectedOutput: '[4, 5, 1, 2, 3]' }, { input: 'nums=[1,2,3], k=1', expectedOutput: '[3, 1, 2]' }, { input: 'nums=[1], k=4', expectedOutput: '[1]' }, { input: 'nums=[1,2], k=0', expectedOutput: '[1, 2]' }, { input: 'nums=[0,0,1], k=4', expectedOutput: '[1, 0, 0]' }] },
   { problem_id: '116', title: 'Unique Characters', description: 'Return True if all chars in string are unique.', difficulty: 'Medium', language: 'Python', expected_output: 'Boolean', tags: ['strings', 'set'], test_cases: [{ input: '"abc"', expectedOutput: 'True' }, { input: '"aabc"', expectedOutput: 'False' }, { input: '""', expectedOutput: 'True' }, { input: '"abcdefghij"', expectedOutput: 'True' }, { input: '"abca"', expectedOutput: 'False' }] },
-  { problem_id: '117', title: 'JSON Field Extractor', description: 'Extract name, email, phone, company from plain text as JSON.', difficulty: 'Hard', language: 'Python', expected_output: 'JSON', tags: ['parsing'], test_cases: [{ input: '""', expectedOutput: '{}' }, { input: '"plain"', expectedOutput: '{}' }, { input: '"email a@b.com"', expectedOutput: '{}' }, { input: '"name: Ada"', expectedOutput: '{}' }, { input: '"John from X, email a@b.com, phone 555"', expectedOutput: '{}' }] },
-  { problem_id: '118', title: 'LRU Cache Design', description: 'Implement LRU cache with O(1) get and put.', difficulty: 'Hard', language: 'Python', expected_output: 'Class behavior', tags: ['design', 'hashmap'], test_cases: [{ input: 'capacity=2; put/get sequence', expectedOutput: 'Matches LRU policy' }, { input: 'capacity=2; put/get sequence', expectedOutput: 'Matches LRU policy' }, { input: 'capacity=2; put/get sequence', expectedOutput: 'Matches LRU policy' }, { input: 'capacity=2; put/get sequence', expectedOutput: 'Matches LRU policy' }, { input: 'capacity=2; put/get sequence', expectedOutput: 'Matches LRU policy' }] },
-  { problem_id: '119', title: 'Word Ladder Steps', description: 'Return shortest transformation length between words.', difficulty: 'Hard', language: 'Python', expected_output: 'Integer', tags: ['graph', 'bfs'], test_cases: [{ input: 'begin=hit,end=cog', expectedOutput: '5' }, { input: 'begin=hit,end=cog', expectedOutput: '5' }, { input: 'begin=hit,end=cog', expectedOutput: '5' }, { input: 'begin=hit,end=cog', expectedOutput: '5' }, { input: 'begin=hit,end=cog', expectedOutput: '5' }] },
+  {
+    problem_id: '117',
+    title: 'JSON Field Extractor',
+    description:
+      'Write extract_fields(text: str) -> dict. Extract optional keys name, email, phone, company using these rules: email must match user@domain; name from line like "name: Ada" or leading words before "from" when followed by company (e.g. "John from X"); company as word after "from"; phone as contiguous digits (at least 3). Omit keys with no match.',
+    difficulty: 'Hard',
+    language: 'Python',
+    expected_output: 'dict (Python repr)',
+    tags: ['parsing'],
+    test_cases: [
+      { input: '""', expectedOutput: '{}' },
+      { input: '"plain"', expectedOutput: '{}' },
+      { input: '"email a@b.com"', expectedOutput: "{'email': 'a@b.com'}" },
+      { input: '"name: Ada"', expectedOutput: "{'name': 'Ada'}" },
+      {
+        input: '"John from X, email a@b.com, phone 555"',
+        expectedOutput: "{'name': 'John', 'company': 'X', 'email': 'a@b.com', 'phone': '555'}",
+      },
+    ],
+  },
+  {
+    problem_id: '118',
+    title: 'LRU Cache Design',
+    description:
+      'Implement run_lru(capacity, commands) -> list. commands is a list of tuples: ("put", key, value) or ("get", key). Simulate an LRU cache with that capacity; append each get\'s return value to the result list (-1 if key missing).',
+    difficulty: 'Hard',
+    language: 'Python',
+    expected_output: 'list of get results',
+    tags: ['design', 'hashmap'],
+    test_cases: [
+      {
+        input: '(1, [("put", 1, 1), ("get", 1)])',
+        expectedOutput: '[1]',
+      },
+      {
+        input:
+          '(2, [("put", 1, 1), ("put", 2, 2), ("get", 1), ("put", 3, 3), ("get", 2), ("get", 4)])',
+        expectedOutput: '[1, -1, -1]',
+      },
+      {
+        input: '(2, [("get", 99)])',
+        expectedOutput: '[-1]',
+      },
+      {
+        input:
+          '(3, [("put", 1, 10), ("put", 2, 20), ("put", 3, 30), ("get", 1), ("get", 2), ("get", 3)])',
+        expectedOutput: '[10, 20, 30]',
+      },
+      {
+        input: '(2, [("put", 1, 1), ("put", 2, 2), ("get", 2), ("put", 3, 33), ("get", 1)])',
+        expectedOutput: '[2, 33]',
+      },
+    ],
+  },
+  {
+    problem_id: '119',
+    title: 'Word Ladder Steps',
+    description:
+      'Write word_ladder_length(packed) -> int. Argument packed is a tuple (begin_word, end_word, word_list). Return length of shortest sequence from begin_word to end_word where each step changes exactly one letter and each intermediate word is in word_list (including endpoints). Return 0 if end is unreachable.',
+    difficulty: 'Hard',
+    language: 'Python',
+    expected_output: 'Integer',
+    tags: ['graph', 'bfs'],
+    test_cases: [
+      {
+        input: "('hit', 'cog', ['hot', 'dot', 'dog', 'lot', 'log'])",
+        expectedOutput: '5',
+      },
+      {
+        input: "('hit', 'cog', ['hot'])",
+        expectedOutput: '0',
+      },
+      {
+        input: "('a', 'c', ['a', 'b', 'c'])",
+        expectedOutput: '2',
+      },
+      {
+        input: "('same', 'same', ['same'])",
+        expectedOutput: '1',
+      },
+      {
+        input: "('hit', 'hot', ['hot', 'dot', 'dog'])",
+        expectedOutput: '2',
+      },
+    ],
+  },
   { problem_id: '120', title: 'Top K Frequent', description: 'Return k most frequent elements.', difficulty: 'Hard', language: 'Python', expected_output: 'Array', tags: ['heap', 'hashmap'], test_cases: [{ input: 'nums=[1,1,1,2,2,3], k=2', expectedOutput: '[1, 2]' }, { input: 'nums=[1], k=1', expectedOutput: '[1]' }, { input: 'nums=[1,2], k=2', expectedOutput: '[1, 2]' }, { input: 'nums=[7,7,7], k=1', expectedOutput: '[7]' }, { input: 'nums=[5,5,5,2,2,1], k=2', expectedOutput: '[5, 2]' }] },
 ];
 // ✅ Level-wise split (mixed difficulty)

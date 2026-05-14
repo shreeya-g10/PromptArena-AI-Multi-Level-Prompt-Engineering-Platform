@@ -18,6 +18,11 @@ import {
   generateFeedback,
   trackPromptEvolution,
 } from '../utils';
+import { level3CodingProblems } from '../../../shared/level3CodingProblems.js';
+import {
+  analyzeAiResponseSnippet,
+  scoreReasonExplanation,
+} from '../../../shared/level3CodingAnalyze.js';
 
 const API_MODE = (import.meta.env.VITE_API_MODE || 'mock').toLowerCase();
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
@@ -55,12 +60,25 @@ const mockApi: ApiClient = {
     const structureScore = clamp(evalResult.structureScore, 1, 10);
     const successProbability = clamp(evalResult.successProbability, 10, 100);
     const totalTestCases = 5;
+    const mockTestPassRate = Math.round(
+      (structureScore / 10) * (successProbability / 100) * 100
+    );
     const testCasesPassed = clamp(
-      Math.round((successProbability / 100) * totalTestCases),
-      1,
+      Math.round((mockTestPassRate / 100) * totalTestCases),
+      0,
       totalTestCases
     );
-    const reliabilityScore = Math.round((testCasesPassed / totalTestCases) * 100);
+    const promptScoreApprox = structureScore * 10;
+    const reliabilityScore = Math.min(
+      100,
+      Math.max(
+        0,
+        Math.min(
+          Math.round(mockTestPassRate * 0.93 + promptScoreApprox * 0.07),
+          mockTestPassRate + 12
+        )
+      )
+    );
     const effectivenessScore = clamp(Math.round(evalResult.effectiveness), 0, 100);
 
     return {
@@ -181,30 +199,84 @@ const mockApi: ApiClient = {
 
   async submitLevel3Scenario(payload: Level3Request): Promise<Level3Response> {
     await wait(700);
-    const text = payload.promptText.toLowerCase();
-    const unsafePattern = /hack|exploit|malware|ransomware code|bypass/;
-    const safePattern = /explain|prevention|protection|safety|awareness/;
-    const hallucinationDetected =
-      !!payload.generatedCode && /undefined|syntaxerror|exception|todo/i.test(payload.generatedCode);
 
-    const ethicalIntegrityScore =
-      payload.mode === 'coding'
-        ? 80
-        : unsafePattern.test(text)
+    if (payload.mode !== 'coding') {
+      const text = (payload.promptText ?? '').toLowerCase();
+      const unsafePattern = /hack|exploit|malware|ransomware code|bypass/;
+      const safePattern = /explain|prevention|protection|safety|awareness/;
+      const ethicalIntegrityScore = unsafePattern.test(text)
         ? 20
         : safePattern.test(text)
-        ? 95
-        : 70;
+          ? 95
+          : 70;
+
+      return {
+        ethicalIntegrityScore,
+        rationale:
+          ethicalIntegrityScore > 90
+            ? 'Prompt is safety-oriented and aligned with responsible AI usage.'
+            : ethicalIntegrityScore > 40
+              ? 'Prompt is partially safe but can be improved by emphasizing prevention and ethical framing.'
+              : 'Response may need clearer refusal of harmful instructions.',
+      };
+    }
+
+    const pid = payload.problemId || payload.scenarioId;
+    const problem = level3CodingProblems.find((p) => p.problemId === pid);
+    if (!problem) {
+      throw new Error('Unknown Level 3 coding problem id.');
+    }
+
+    const snippet = (payload.aiResponseText ?? '').trim();
+    if (!snippet) {
+      throw new Error('Paste the AI response (Step 2) for analysis.');
+    }
+
+    const analysis = analyzeAiResponseSnippet(snippet);
+    const explanationSource =
+      typeof payload.reasonExplanation === 'string' &&
+      payload.reasonExplanation.trim()
+        ? payload.reasonExplanation
+        : (payload.promptText ?? '');
+    const reasonScoring = scoreReasonExplanation(explanationSource, problem);
+
+    const gt = !!problem.groundTruthHallucination;
+    const userBelief =
+      typeof payload.believesHallucination === 'boolean'
+        ? payload.believesHallucination
+        : null;
+
+    const userHallucinationAnswerCorrect =
+      userBelief === null ? null : userBelief === gt;
+
+    const rationale = [
+      `Ground truth for "${problem.title}": ${gt ? 'Yes — treat as hallucinating / unreliable.' : 'No — not labeled as hallucination for this drill.'}`,
+      `Automated scan: ${analysis.intrinsicHallucination ? 'Issues found (deps / logic).' : 'No strong hallucination signals.'}`,
+      userBelief === null
+        ? 'Answer Yes/No on hallucination to compare with the answer key.'
+        : userHallucinationAnswerCorrect
+          ? 'Your Yes/No matches the exercise ground truth.'
+          : 'Your Yes/No differs from this exercise ground truth.',
+      `Explanation rubric: ${reasonScoring.reasonQualityLabel} (${reasonScoring.reasonQualityScore}/100).`,
+    ].join(' ');
 
     return {
-      ethicalIntegrityScore,
-      hallucinationDetected,
-      reliabilityAdjustment: hallucinationDetected ? -20 : 5,
-      rationale: hallucinationDetected
-        ? 'Potential hallucination detected due to invalid or inconsistent generated code.'
-        : ethicalIntegrityScore > 90
-        ? 'Prompt is safety-oriented and aligned with responsible AI usage.'
-        : 'Prompt is partially safe but can be improved by emphasizing prevention and ethical framing.',
+      hallucinationDetected: analysis.intrinsicHallucination,
+      intrinsicHallucination: analysis.intrinsicHallucination,
+      groundTruthHallucination: gt,
+      userHallucinationAnswerCorrect,
+      believesHallucination: userBelief,
+      reasonQualityScore: reasonScoring.reasonQualityScore,
+      reasonQualityLabel: reasonScoring.reasonQualityLabel,
+      matchedKeywords: reasonScoring.matchedKeywords,
+      hitAntiPatterns: reasonScoring.hitAntiPatterns,
+      reliabilityScore: analysis.reliabilityScore,
+      outputQualityScore: analysis.outputQualityScore,
+      securityRating: analysis.securityRating,
+      compositeScore: analysis.compositeScore,
+      reliabilityAdjustment: analysis.compositeScore,
+      rationale,
+      userPromptReceived: payload.userPrompt ?? '',
     };
   },
 
