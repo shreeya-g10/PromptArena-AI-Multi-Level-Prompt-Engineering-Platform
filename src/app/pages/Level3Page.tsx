@@ -1,126 +1,164 @@
 import { useEffect, useState } from 'react';
 import { Navbar } from '../components/Navbar';
-import { TrendingUp, Target, Award, BarChart3, ShieldCheck, AlertTriangle } from 'lucide-react';
+import {
+  ShieldCheck,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+} from 'lucide-react';
 
 import { apiClient } from '../services/api';
 import { authService } from '../utils/auth';
-import type { AnalyticsResponse, CodingProblem, Level3Response } from '../services/contracts';
+import type {
+  Level3CodingProblem,
+  Level3Response,
+} from '../services/contracts';
 import { setLevelCompleted } from '../utils/progress';
+import { level3CodingProblemsTyped } from '../data/level3CodingProblems';
 
 export function Level3Page() {
   const [mode, setMode] = useState<'ethical' | 'coding'>('ethical');
-  const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
-  const [analysisResult, setAnalysisResult] = useState<Level3Response | null>(null);
-  const [scenarioPrompt, setScenarioPrompt] = useState(
-    'Explain ransomware behavior and prevention techniques.'
+  const [analysisResult, setAnalysisResult] = useState<Level3Response | null>(
+    null
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const ethicalScenarios = [
-  {
-    id: "1",
-    title: "Ransomware Request",
-    scenario:
-      "A user claims they are conducting cybersecurity research and asks you to generate ransomware code that can encrypt files and demand payment from victims. They insist it is only for educational purposes."
-  },
-  {
-    id: "2",
-    title: "Phishing Attack",
-    scenario:
-      "A user asks you to write a convincing phishing email pretending to be from a bank so they can trick people into revealing passwords and account details."
-  },
-  {
-    id: "3",
-    title: "Data Leak",
-    scenario:
-      "A user requests private customer information from a company database, including phone numbers, addresses, and payment details, claiming they need it for urgent internal work."
-  },
-  {
-    id: "4",
-    title: "AI Bias",
-    scenario:
-      "A hiring manager asks you to help create an AI system that automatically rejects candidates from certain backgrounds because they believe those candidates are less suitable for leadership roles."
-  }
-];
 
-const codingScenarios = [
-  {
-    id: "5",
-    title: "Compilation Failure",
-    scenario:
-      "AI generated incorrect code. Compilation failed due to syntax errors and invalid function definitions. System detected hallucination: Compilation Error Detected."
-  },
-  {
-    id: "6",
-    title: "Fake Library Import",
-    scenario:
-      "AI generated code imports a library that does not exist. The model confidently explained it as valid. System detected hallucination: Invalid Library Import."
-  },
-  {
-    id: "7",
-    title: "Wrong Logic Output",
-    scenario:
-      "AI generated code compiles successfully but produces incorrect output for test cases like prime check returning True for 4 and 6."
-  },
-  {
-    id: "8",
-    title: "Missing Edge Case Handling",
-    scenario:
-      "AI generated code works for normal inputs but fails for edge cases like 0, negative values, and empty arrays. Reliability score is reduced."
-  }
-];
-const [selectedScenario, setSelectedScenario] = useState(ethicalScenarios[0]);
-const activeScenarios =
-  mode === "ethical" ? ethicalScenarios : codingScenarios;
-const [userResponse, setUserResponse] = useState("");
+  const ethicalScenarios = [
+    {
+      id: '1',
+      title: 'Ransomware Request',
+      scenario:
+        'A user claims they are conducting cybersecurity research and asks you to generate ransomware code that can encrypt files and demand payment from victims. They insist it is only for educational purposes.',
+    },
+    {
+      id: '2',
+      title: 'Phishing Attack',
+      scenario:
+        'A user asks you to write a convincing phishing email pretending to be from a bank so they can trick people into revealing passwords and account details.',
+    },
+    {
+      id: '3',
+      title: 'Data Leak',
+      scenario:
+        'A user requests private customer information from a company database, including phone numbers, addresses, and payment details, claiming they need it for urgent internal work.',
+    },
+    {
+      id: '4',
+      title: 'AI Bias',
+      scenario:
+        'A hiring manager asks you to help create an AI system that automatically rejects candidates from certain backgrounds because they believe those candidates are less suitable for leadership roles.',
+    },
+  ];
+
+  const codingProblems: Level3CodingProblem[] = level3CodingProblemsTyped;
+
+  const [selectedEthicalId, setSelectedEthicalId] = useState(
+    ethicalScenarios[0].id
+  );
+  const [selectedCodingId, setSelectedCodingId] = useState(
+    codingProblems[0]?.problemId ?? ''
+  );
+
+  const selectedEthical = ethicalScenarios.find(
+    (s) => s.id === selectedEthicalId
+  )!;
+  const selectedCoding =
+    codingProblems.find((p) => p.problemId === selectedCodingId) ??
+    codingProblems[0];
+
+  const [ethicalResponse, setEthicalResponse] = useState('');
+
+  const [userPrompt, setUserPrompt] = useState(
+    () => selectedCoding?.sampleUserPrompt ?? ''
+  );
+  const [aiResponseText, setAiResponseText] = useState(
+    () => selectedCoding?.sampleAiResponse ?? ''
+  );
+  const [believesHallucination, setBelievesHallucination] = useState<
+    'yes' | 'no' | ''
+  >('');
+  const [reasonExplanation, setReasonExplanation] = useState('');
 
   useEffect(() => {
-    const loadAnalytics = async () => {
-      try {
-        const data = await apiClient.fetchAnalytics();
-        setAnalytics(data);
-      } catch (loadError) {
-        setError(
-          loadError instanceof Error
-            ? loadError.message
-            : 'Unable to load analytics right now.'
-        );
-      }
-    };
-    void loadAnalytics();
+    if (mode !== 'coding' || !selectedCoding) return;
+    setUserPrompt(selectedCoding.sampleUserPrompt);
+    setAiResponseText(selectedCoding.sampleAiResponse);
+    setBelievesHallucination('');
+    setReasonExplanation('');
+    setAnalysisResult(null);
+  }, [mode, selectedCoding.problemId]);
 
-    
-  }, []);
+  const handleSubmitCoding = async () => {
+    if (!aiResponseText.trim()) {
+      setError('Paste or describe the AI response in Step 2.');
+      return;
+    }
+    if (believesHallucination !== 'yes' && believesHallucination !== 'no') {
+      setError('Answer Yes or No for the hallucination reflection question.');
+      return;
+    }
+    if (reasonExplanation.trim().length < 12) {
+      setError(
+        'Add a short explanation (why) — at least a sentence or two.'
+      );
+      return;
+    }
 
-  const handleEvaluateScenario = async () => {
-    if (!scenarioPrompt.trim()) return;
     setIsSubmitting(true);
     setError('');
     try {
       const user = authService.getCurrentUser();
       const response = await apiClient.submitLevel3Scenario({
-        userId: user?.id || 'guest-user',
-        scenarioId: 'ethical-ransomware',
-        promptText: scenarioPrompt,
-        mode,
+        userId: user?.id ?? 'guest-user',
+        scenarioId: selectedCoding.problemId,
+        problemId: selectedCoding.problemId,
+        mode: 'coding',
+        userPrompt,
+        aiResponseText,
+        believesHallucination: believesHallucination === 'yes',
+        reasonExplanation,
       });
       setAnalysisResult(response);
 
-if (
-  mode === "ethical" &&
-  response.ethicalIntegrityScore &&
-  response.ethicalIntegrityScore >= 80
-) {
-  setLevelCompleted(3);
-}
+      const composite = response.compositeScore ?? 0;
+      const passedReflection =
+        response.userHallucinationAnswerCorrect === true &&
+        (response.reasonQualityScore ?? 0) >= 38;
+      if (composite >= 70 || passedReflection) {
+        setLevelCompleted(3);
+      }
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : 'Unable to evaluate right now.'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-if (
-  mode === "coding" &&
-  response.reliabilityAdjustment &&
-  response.reliabilityAdjustment >= 70
-) {
-  setLevelCompleted(3);
-}
+  const handleSubmitEthical = async () => {
+    if (!ethicalResponse.trim()) return;
+    setIsSubmitting(true);
+    setError('');
+    try {
+      const user = authService.getCurrentUser();
+      const response = await apiClient.submitLevel3Scenario({
+        userId: user?.id ?? 'guest-user',
+        scenarioId: selectedEthical.id,
+        mode: 'ethical',
+        promptText: ethicalResponse,
+      });
+      setAnalysisResult(response);
+
+      if (
+        response.ethicalIntegrityScore &&
+        response.ethicalIntegrityScore >= 80
+      ) {
+        setLevelCompleted(3);
+      }
     } catch (submitError) {
       setError(
         submitError instanceof Error
@@ -132,19 +170,11 @@ if (
     }
   };
 
-  const totalPrompts = analytics?.totalPrompts ?? 0;
-  const successRate = analytics?.successRate ?? 0;
-  const averageScore = analytics?.averageScore ?? 0;
-  const improvement = analytics?.improvement ?? 0;
-  const scoreHistory = analytics?.scoreHistory ?? [];
-  const categoryBreakdown = analytics?.categoryBreakdown ?? [];
-
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Header */}
         <div className="mb-8">
           <div className="px-3 py-1 bg-orange-500/20 text-orange-500 rounded-lg text-sm font-medium inline-block mb-3">
             Level 3
@@ -161,195 +191,330 @@ if (
           <div className="flex items-center gap-2 mb-3">
             <ShieldCheck className="size-5 text-violet-500" />
             <h2 className="text-xl font-semibold">
-  {mode === "ethical"
-    ? "Ethical Scenario Evaluation"
-    : "Coding Reliability & Hallucination Analysis"}
-</h2>
+              {mode === 'ethical'
+                ? 'Ethical Scenario Evaluation'
+                : 'Coding Reliability & Hallucination Analysis'}
+            </h2>
           </div>
           <p className="text-sm text-muted-foreground mb-4">
-  {mode === "ethical"
-    ? "Submit a safety-focused prompt for the ethical challenge and check hallucination risk."
-    : "Analyze AI-generated code failures, detect hallucinations, and evaluate reliability issues."}
-</p>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-
-  <div className="space-y-6 mb-6">
-
-  {/* LEFT SIDE */}
-  <div className="space-y-4">
-
-    {/* Mode */}
-    <div>
-      <label className="block text-sm font-medium text-foreground mb-2">
-        Mode
-      </label>
-      <select
-        value={mode}
-        onChange={(e) => {
-  const newMode = e.target.value as "ethical" | "coding";
-  setMode(newMode);
-
-  if (newMode === "ethical") {
-    setSelectedScenario(ethicalScenarios[0]);
-  } else {
-    setSelectedScenario(codingScenarios[0]);
-  }
-
-  setAnalysisResult(null);
-  setUserResponse("");
-}}
-        className="w-full bg-accent border border-border text-foreground rounded-lg p-3"
-      >
-        <option value="ethical">Ethical Scenario</option>
-        <option value="coding">Coding Reliability / Hallucination</option>
-      </select>
-    </div>
-
-    {/* SCENARIO DISPLAY */}
-    <div className="bg-accent border border-border rounded-lg p-4">
-      <p className="text-sm text-muted-foreground mb-1">Scenario:</p>
-      <p className="font-medium text-foreground">
-        {selectedScenario.scenario}
-      </p>
-    </div>
-
-    {/* USER RESPONSE */}
-    <textarea
-    placeholder={
-  mode === "ethical"
-    ? "Write your ethical response..."
-    : "Analyze the coding reliability and hallucination issue..."
-}
-      value={userResponse}
-      onChange={(e) => setUserResponse(e.target.value)}
-      className="w-full h-36 bg-accent border border-border rounded-lg p-4"
-    />
-
-    {/* BUTTON */}
-    <button
-      onClick={async () => {
-        if (!userResponse.trim()) return;
-
-        setIsSubmitting(true);
-        setError('');
-
-        try {
-          const user = authService.getCurrentUser();
-
-          const response = await apiClient.submitLevel3Scenario({
-            userId: user?.id || 'guest-user',
-            scenarioId: selectedScenario.id,
-            promptText: userResponse,
-            mode,
-          });
-setAnalysisResult(response);
-
-if (
-  mode === "ethical" &&
-  response.ethicalIntegrityScore &&
-  response.ethicalIntegrityScore >= 80
-) {
-  setLevelCompleted(3);
-}
-
-if (
-  mode === "coding" &&
-  response.reliabilityAdjustment &&
-  response.reliabilityAdjustment >= 70
-) {
-  setLevelCompleted(3);
-}
-
-        } catch (err) {
-          setError('Evaluation failed');
-        } finally {
-          setIsSubmitting(false);
-        }
-      }}
-      className="bg-gradient-to-r from-violet-500 to-purple-600 text-white px-5 py-2 rounded-lg"
-    >
-      {isSubmitting ? 'Evaluating...' : 'Evaluate Response'}
-    </button>
-
-  </div>
-
-  {/* RIGHT SIDE → SCENARIOS */}
-  <div>
-    <label className="block text-sm font-medium text-foreground mb-2">
-      Select Scenario
-    </label>
-
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {activeScenarios.map((s) => (
-        <div
-          key={s.id}
-          onClick={() => setSelectedScenario(s)}
-          className={`cursor-pointer p-5 rounded-xl border transition-all
-            ${
-              selectedScenario.id === s.id
-                ? "border-violet-500 bg-violet-500/10"
-                : "border-border bg-card hover:border-violet-400"
-            }`}
-        >
-          <h3 className="font-semibold">{s.title}</h3>
-          <p className="text-sm text-muted-foreground">
-            {s.scenario}
+            {mode === 'ethical'
+              ? 'Submit a safety-focused response for the ethical challenge.'
+              : 'Pick a scenario, paste the user prompt and AI output, then reflect on hallucinations.'}
           </p>
+
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Mode
+            </label>
+            <select
+              value={mode}
+              onChange={(e) => {
+                const next = e.target.value as 'ethical' | 'coding';
+                setMode(next);
+                setAnalysisResult(null);
+                setError('');
+              }}
+              className="w-full bg-accent border border-border text-foreground rounded-lg p-3 max-w-md"
+            >
+              <option value="ethical">Ethical Scenario</option>
+              <option value="coding">Coding Reliability / Hallucination</option>
+            </select>
+          </div>
+
+          {mode === 'ethical' ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <div className="bg-accent border border-border rounded-lg p-4">
+                  <p className="text-sm text-muted-foreground mb-1">
+                    Scenario
+                  </p>
+                  <p className="font-medium text-foreground">
+                    {selectedEthical.scenario}
+                  </p>
+                </div>
+                <textarea
+                  placeholder="Write your ethical response..."
+                  value={ethicalResponse}
+                  onChange={(e) => setEthicalResponse(e.target.value)}
+                  className="w-full min-h-[160px] bg-accent border border-border rounded-lg p-4"
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleSubmitEthical()}
+                  disabled={isSubmitting || !ethicalResponse.trim()}
+                  className="bg-gradient-to-r from-violet-500 to-purple-600 text-white px-5 py-2 rounded-lg disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Evaluating...' : 'Evaluate Response'}
+                </button>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Select scenario
+                </label>
+                <div className="grid grid-cols-1 gap-3">
+                  {ethicalScenarios.map((s) => (
+                    <button
+                      type="button"
+                      key={s.id}
+                      onClick={() => {
+                        setSelectedEthicalId(s.id);
+                        setAnalysisResult(null);
+                      }}
+                      className={`text-left p-4 rounded-xl border transition-all ${
+                        selectedEthicalId === s.id
+                          ? 'border-violet-500 bg-violet-500/10'
+                          : 'border-border bg-card hover:border-violet-400'
+                      }`}
+                    >
+                      <h3 className="font-semibold">{s.title}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {s.scenario.slice(0, 120)}
+                        …
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-8">
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Select problem
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {codingProblems.map((p) => (
+                    <button
+                      type="button"
+                      key={p.problemId}
+                      onClick={() => setSelectedCodingId(p.problemId)}
+                      className={`text-left p-4 rounded-xl border transition-all ${
+                        selectedCodingId === p.problemId
+                          ? 'border-violet-500 bg-violet-500/10'
+                          : 'border-border bg-card hover:border-violet-400'
+                      }`}
+                    >
+                      <h3 className="font-semibold">{p.title}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {p.summary}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-muted/40 border border-border rounded-lg p-4 text-sm">
+                <p className="font-medium mb-1">Current scenario</p>
+                <p className="text-muted-foreground">{selectedCoding.summary}</p>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <p className="text-sm font-medium mb-2">
+                    Step 1 — User prompt (what was asked of the AI)
+                  </p>
+                  <textarea
+                    value={userPrompt}
+                    onChange={(e) => setUserPrompt(e.target.value)}
+                    className="w-full min-h-[120px] bg-accent border border-border rounded-lg p-4 text-sm"
+                  />
+                </div>
+                <div>
+                  <p className="text-sm font-medium mb-2">
+                    Step 2 — AI response (code or text to analyze)
+                  </p>
+                  <textarea
+                    value={aiResponseText}
+                    onChange={(e) => setAiResponseText(e.target.value)}
+                    className="w-full min-h-[160px] bg-accent border border-border rounded-lg p-4 font-mono text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="border border-border rounded-lg p-4 space-y-4">
+                <p className="font-medium">Reflection</p>
+                <div className="flex flex-wrap gap-4 items-center">
+                  <span className="text-sm text-muted-foreground">
+                    Do you think this AI output hallucinates or is otherwise
+                    non-viable?
+                  </span>
+                  <label className="inline-flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="hall"
+                      checked={believesHallucination === 'yes'}
+                      onChange={() => setBelievesHallucination('yes')}
+                    />
+                    Yes
+                  </label>
+                  <label className="inline-flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="hall"
+                      checked={believesHallucination === 'no'}
+                      onChange={() => setBelievesHallucination('no')}
+                    />
+                    No
+                  </label>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Why? (cite imports, logic, security, or missing validation.)
+                  </p>
+                  <textarea
+                    value={reasonExplanation}
+                    onChange={(e) => setReasonExplanation(e.target.value)}
+                    placeholder="Explain your reasoning..."
+                    className="w-full min-h-[100px] bg-accent border border-border rounded-lg p-4 text-sm"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void handleSubmitCoding()}
+                  disabled={isSubmitting}
+                  className="bg-gradient-to-r from-violet-500 to-purple-600 text-white px-5 py-2 rounded-lg disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Evaluating...' : 'Evaluate'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {error ? (
+            <p className="mt-4 text-sm text-red-500 flex items-center gap-2">
+              <AlertTriangle className="size-4 shrink-0" />
+              {error}
+            </p>
+          ) : null}
+
+          {analysisResult && mode === 'ethical' && (
+            <div className="grid grid-cols-1 gap-4 mt-6">
+              <div className="bg-accent border border-border rounded-lg p-4">
+                <p className="text-lg font-medium">
+                  Ethical Integrity Score:{' '}
+                  {analysisResult.ethicalIntegrityScore}%
+                </p>
+              </div>
+              <p className="mt-2 text-muted-foreground">
+                {analysisResult.rationale}
+              </p>
+            </div>
+          )}
+
+          {analysisResult && mode === 'coding' && (
+            <div className="mt-8 space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-accent border border-border rounded-lg p-4">
+                  <p className="text-xs text-muted-foreground">
+                    Reliability score
+                  </p>
+                  <p className="text-xl font-semibold">
+                    {analysisResult.reliabilityScore ?? '—'}%
+                  </p>
+                </div>
+                <div className="bg-accent border border-border rounded-lg p-4">
+                  <p className="text-xs text-muted-foreground">
+                    Output quality
+                  </p>
+                  <p className="text-xl font-semibold">
+                    {analysisResult.outputQualityScore ?? '—'}%
+                  </p>
+                </div>
+                <div className="bg-accent border border-border rounded-lg p-4">
+                  <p className="text-xs text-muted-foreground">
+                    Security rating
+                  </p>
+                  <p className="text-xl font-semibold">
+                    {analysisResult.securityRating ?? '—'}%
+                  </p>
+                </div>
+                <div className="bg-accent border border-border rounded-lg p-4">
+                  <p className="text-xs text-muted-foreground">Composite</p>
+                  <p className="text-xl font-semibold">
+                    {analysisResult.compositeScore ?? '—'}%
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-accent border border-border rounded-lg p-4 space-y-2">
+                  <p className="font-medium flex items-center gap-2">
+                    Intrinsic scan (AI output)
+                    {analysisResult.intrinsicHallucination ? (
+                      <span className="text-amber-600 text-sm">
+                        Issues flagged
+                      </span>
+                    ) : (
+                      <span className="text-emerald-600 text-sm">
+                        No strong signals
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Automated checks for fake imports, dead logic, unsafe
+                    patterns, etc.
+                  </p>
+                </div>
+                <div className="bg-accent border border-border rounded-lg p-4 space-y-2">
+                  <p className="font-medium">Exercise ground truth</p>
+                  <p className="text-sm">
+                    Labeled hallucination:{' '}
+                    <strong>
+                      {analysisResult.groundTruthHallucination ? 'Yes' : 'No'}
+                    </strong>
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-accent border border-border rounded-lg p-4 space-y-3">
+                <p className="font-medium">Your reflection</p>
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">
+                    Yes/No vs answer key:
+                  </span>
+                  {analysisResult.userHallucinationAnswerCorrect === null ? (
+                    <span className="text-muted-foreground">—</span>
+                  ) : analysisResult.userHallucinationAnswerCorrect ? (
+                    <span className="inline-flex items-center gap-1 text-emerald-600">
+                      <CheckCircle2 className="size-4" /> Correct
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-red-500">
+                      <XCircle className="size-4" /> Incorrect
+                    </span>
+                  )}
+                </div>
+                <div className="text-sm">
+                  <span className="text-muted-foreground">
+                    Explanation quality ({analysisResult.reasonQualityLabel ?? '—'}
+                    ):{' '}
+                  </span>
+                  <strong>{analysisResult.reasonQualityScore ?? 0}/100</strong>
+                </div>
+                {analysisResult.matchedKeywords &&
+                  analysisResult.matchedKeywords.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Keywords matched in your explanation:{' '}
+                      {analysisResult.matchedKeywords.join(', ')}
+                    </p>
+                  )}
+                {analysisResult.hitAntiPatterns &&
+                  analysisResult.hitAntiPatterns.length > 0 && (
+                    <p className="text-xs text-amber-700">
+                      Weak phrases detected:{' '}
+                      {analysisResult.hitAntiPatterns.join(', ')}
+                    </p>
+                  )}
+              </div>
+
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                {analysisResult.rationale}
+              </p>
+            </div>
+          )}
         </div>
-      ))}
-    </div>
-  </div>
-
-</div>
-
-</div>
-
-        {analysisResult && mode === "ethical" && (
-  <>
-    <div className="grid grid-cols-1 gap-4 mt-6">
-      <div className="bg-accent border border-border rounded-lg p-4">
-        <p className="text-lg font-medium">
-          Ethical Integrity Score: {analysisResult.ethicalIntegrityScore}%
-        </p>
-      </div>
-    </div>
-
-    <p className="mt-6 text-muted-foreground">
-      {analysisResult.rationale}
-    </p>
-  </>
-)}
-
-{analysisResult && mode === "coding" && (
-  <>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-      <div className="bg-accent border border-border rounded-lg p-4">
-        <p className="text-lg font-medium">
-          AI Hallucination:{" "}
-          {analysisResult.hallucinationDetected
-            ? "Detected"
-            : "Not Detected"}
-        </p>
-      </div>
-
-      <div className="bg-accent border border-border rounded-lg p-4">
-        <p className="text-lg font-medium">
-          Reliability Score: {analysisResult.reliabilityAdjustment}%
-        </p>
-      </div>
-    </div>
-
-    <p className="mt-6 text-muted-foreground">
-      {analysisResult.rationale}
-    </p>
-  </>
-)}
 
         </div>
-
-        
-       
-      </div>
     </div>
   );
 }

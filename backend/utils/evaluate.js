@@ -76,14 +76,12 @@ export async function evaluatePrompt(
 
   const predictedSuccess = structureScore * 10;
 
-  // Reliability: mostly driven by test pass rate ("depends on code"), with a
-  // small prompt-quality term so a strong spec nudges score without masking failures.
+  // Reliability: dominated by test pass rate; prompt quality adds a small nudge only,
+  // and is capped so strong prompts cannot mask widespread test failures.
+  const blended = Math.round(testScore * 0.93 + promptScore * 0.07);
   const reliability = Math.min(
     100,
-    Math.max(
-      0,
-      Math.round(testScore * 0.82 + promptScore * 0.18)
-    )
+    Math.max(0, Math.min(blended, testScore + 12))
   );
 
   const effectiveness = Math.round(

@@ -1,11 +1,15 @@
 import express from "express";
+import { level3CodingProblems } from "../../shared/level3CodingProblems.js";
+import {
+  analyzeAiResponseSnippet,
+  scoreReasonExplanation,
+} from "../../shared/level3CodingAnalyze.js";
 
 const router = express.Router();
 
 function checkEthics(prompt) {
   const text = prompt.toLowerCase().trim();
 
-  // 🚨 Strong unethical keywords
   const severeWords = [
     "ransomware",
     "phishing",
@@ -27,10 +31,9 @@ function checkEthics(prompt) {
     "without being detected",
     "avoid detection",
     "illegal access",
-    "unauthorized access"
+    "unauthorized access",
   ];
 
-  // ⚠ Medium unethical keywords
   const mediumWords = [
     "hack",
     "bypass",
@@ -40,10 +43,9 @@ function checkEthics(prompt) {
     "fake identity",
     "biased hiring",
     "discriminate",
-    "social engineering"
+    "social engineering",
   ];
 
-  // ✅ Strong ethical / refusal keywords
   const ethicalWords = [
     "i cannot help",
     "i cannot assist",
@@ -74,7 +76,7 @@ function checkEthics(prompt) {
     "authorized testing",
     "defensive purpose",
     "employee awareness",
-    "safe practices"
+    "safe practices",
   ];
 
   let severe = false;
@@ -99,186 +101,173 @@ function checkEthics(prompt) {
     }
   });
 
-  // -------------------------
-  // Final Ethics Logic
-  // -------------------------
-
-  // Strong harmful request without ethics → very low
   if (severe && !ethical) {
     return 15;
   }
 
-  // Medium harmful request without ethics → low
   if (medium && !ethical) {
     return 35;
   }
 
-  // Harmful topic but user refuses and promotes safety → high
   if ((severe || medium) && ethical) {
     return 95;
   }
 
-  // Purely ethical safe response → very high
   if (ethical) {
     return 95;
   }
 
-  // Neutral / unclear response
   return 60;
+}
+
+function buildCodingRationale({
+  problem,
+  analysis,
+  gt,
+  userBelief,
+  userCorrect,
+  reasonScoring,
+}) {
+  const lines = [];
+
+  lines.push(
+    `Ground truth (this exercise): ${
+      gt ? "the canonical snippet counts as hallucinating / unreliable." : "the canonical snippet is not treated as a hallucination."
+    }`
+  );
+
+  lines.push(
+    `Automated scan of your pasted AI output: ${
+      analysis.intrinsicHallucination
+        ? "possible hallucination-style issues detected (fake deps, dead logic, etc.)."
+        : "no strong hallucination-style signals detected."
+    }`
+  );
+
+  if (userBelief === null) {
+    lines.push(
+      "Select Yes or No for whether you believe the AI output hallucinates."
+    );
+  } else if (userCorrect) {
+    lines.push(
+      "Your Yes/No answer matches the exercise ground truth—nice work."
+    );
+  } else {
+    lines.push(
+      "Your Yes/No answer does not match this exercise's ground truth; compare with the automated scan and keywords below."
+    );
+  }
+
+  lines.push(
+    `Explanation quality: ${reasonScoring.reasonQualityLabel} (${reasonScoring.reasonQualityScore}/100).`
+  );
+
+  if (problem?.title) {
+    lines.push(`Scenario: ${problem.title}.`);
+  }
+
+  return lines.join(" ");
 }
 
 router.post("/", (req, res) => {
   const { promptText, mode } = req.body;
 
-  const ethicalIntegrityScore = checkEthics(promptText);
-
-  // =========================
-  // ETHICAL MODE
-  // =========================
   if (mode === "ethical") {
+    const ethicalIntegrityScore = checkEthics(promptText || "");
+
     let rationale = "";
 
     if (ethicalIntegrityScore >= 90) {
       rationale =
         "Strong ethical response. Safe, responsible, and clearly avoids harmful actions.";
-    } 
-    else if (ethicalIntegrityScore >= 70) {
+    } else if (ethicalIntegrityScore >= 70) {
       rationale =
         "Mostly ethical response. Safe overall, but stronger refusal and safer framing would improve it.";
-    } 
-    else if (ethicalIntegrityScore >= 40) {
+    } else if (ethicalIntegrityScore >= 40) {
       rationale =
         "Questionable response. Some risky intent or unclear ethical boundaries were detected.";
-    } 
-    else {
+    } else {
       rationale =
         "Highly unethical response detected. Harmful or illegal intent is present.";
     }
 
     return res.json({
       ethicalIntegrityScore,
-      rationale
+      rationale,
     });
   }
 
-// CODING RELIABILITY MODE
-// =========================
-let reliabilityAdjustment = 100;
-let hallucinationDetected = false;
-let rationale = "";
+  // --- Coding reliability / hallucination (structured exercises) ---
+  const {
+    userPrompt,
+    aiResponseText,
+    believesHallucination,
+    reasonExplanation,
+    problemId,
+    scenarioId,
+  } = req.body;
 
-const text = promptText.toLowerCase();
+  const pid = problemId || scenarioId;
+  const problem = level3CodingProblems.find((p) => p.problemId === pid);
 
-// -------------------
-// 1. vague prompt
-// -------------------
-if (
-  text.includes("fix this") ||
-  text.includes("do it") ||
-  text.includes("write code") ||
-  text.includes("make better") ||
-  text.includes("solve fast")
-) {
-  reliabilityAdjustment -= 15;
-}
+  if (!problem) {
+    return res.status(400).json({
+      error:
+        "Unknown coding problem. Send problemId (e.g. l3-1) from the Level 3 coding list.",
+    });
+  }
 
-// -------------------
-// 2. missing constraints
-// -------------------
-if (
-  !text.includes("input") &&
-  !text.includes("output") &&
-  !text.includes("edge case") &&
-  !text.includes("test case")
-) {
-  reliabilityAdjustment -= 15;
-}
+  const snippet = (aiResponseText ?? "").trim();
+  if (!snippet) {
+    return res.status(400).json({
+      error: "Paste the AI response (Step 2) so it can be analyzed.",
+    });
+  }
 
-// -------------------
-// 3. blind trust / poor analysis
-// -------------------
-if (
-  text.includes("looks fine") ||
-  text.includes("should work") ||
-  text.includes("probably correct") ||
-  text.includes("seems valid") ||
-  text.includes("no issue") ||
-  text.includes("works properly") ||
-  text.includes("seems okay") ||
-  text.includes("probably works") ||
-  text.includes("should be fine") ||
-  text.includes("nothing is wrong") ||
-  text.includes("code is correct") ||
-  text.includes("everything looks good")
-) {
-  reliabilityAdjustment -= 35;
-}
+  const analysis = analyzeAiResponseSnippet(snippet);
+  const explanationSource =
+    typeof reasonExplanation === "string" && reasonExplanation.trim()
+      ? reasonExplanation
+      : typeof promptText === "string"
+        ? promptText
+        : "";
 
-// -------------------
-// 4. user correctly identifies issue
-// -------------------
-if (
-  text.includes("syntax error") ||
-  text.includes("wrong output") ||
-  text.includes("fake library") ||
-  text.includes("invalid import") ||
-  text.includes("compile failed") ||
-  text.includes("logic error") ||
-  text.includes("missing edge case")
-) {
-  reliabilityAdjustment += 20;
-}
+  const reasonScoring = scoreReasonExplanation(explanationSource, problem);
 
-// -------------------
-// 5. unsafe engineering
-// -------------------
-if (
-  text.includes("ignore errors") ||
-  text.includes("skip validation") ||
-  text.includes("bypass checks")
-) {
-  reliabilityAdjustment -= 25;
-}
+  const gt = !!problem.groundTruthHallucination;
+  const userBelief =
+    typeof believesHallucination === "boolean" ? believesHallucination : null;
 
-reliabilityAdjustment = Math.max(0, Math.min(100, reliabilityAdjustment));
+  const userHallucinationAnswerCorrect =
+    userBelief === null ? null : userBelief === gt;
 
-// final detection
-// final detection
+  const rationale = buildCodingRationale({
+    problem,
+    analysis,
+    gt,
+    userBelief,
+    userCorrect: userHallucinationAnswerCorrect,
+    reasonScoring,
+  });
 
-if (
-  reliabilityAdjustment < 70 ||
-  text.includes("looks fine") ||
-  text.includes("should work") ||
-  text.includes("probably correct") ||
-  text.includes("seems valid") ||
-  text.includes("no issue") ||
-  text.includes("works properly") ||
-  text.includes("seems okay") ||
-  text.includes("probably works") ||
-  text.includes("should be fine") ||
-  text.includes("nothing is wrong") ||
-  text.includes("code is correct") ||
-  text.includes("everything looks good") ||
-  text.includes("ignore errors") ||
-  text.includes("skip validation") ||
-  text.includes("bypass checks")
-) {
-  hallucinationDetected = true;
-} else {
-  hallucinationDetected = false;
-}if (hallucinationDetected) {
-  rationale =
-    "AI hallucination detected. The response shows weak reliability due to vague prompting, blind trust, missing constraints, or unsafe assumptions.";
-} else {
-  rationale =
-    "Reliable response. The prompt correctly identifies technical issues and demonstrates safe, accurate reasoning.";
-}
-
-return res.json({
-  hallucinationDetected,
-  reliabilityAdjustment: reliabilityAdjustment,
-  rationale
-});
+  return res.json({
+    hallucinationDetected: analysis.intrinsicHallucination,
+    intrinsicHallucination: analysis.intrinsicHallucination,
+    groundTruthHallucination: gt,
+    userHallucinationAnswerCorrect,
+    believesHallucination: userBelief,
+    reasonQualityScore: reasonScoring.reasonQualityScore,
+    reasonQualityLabel: reasonScoring.reasonQualityLabel,
+    matchedKeywords: reasonScoring.matchedKeywords,
+    hitAntiPatterns: reasonScoring.hitAntiPatterns,
+    reliabilityScore: analysis.reliabilityScore,
+    outputQualityScore: analysis.outputQualityScore,
+    securityRating: analysis.securityRating,
+    compositeScore: analysis.compositeScore,
+    reliabilityAdjustment: analysis.compositeScore,
+    rationale,
+    userPromptReceived: typeof userPrompt === "string" ? userPrompt : "",
+  });
 });
 
 export default router;
