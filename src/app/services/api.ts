@@ -13,19 +13,43 @@ import {
 } from './contracts';
 import { mockAnalytics, mockLeaderboard } from '../utils/mockData';
 import { problems20 } from '../data/problems';
-import {
-  evaluatePrompt,
-  generateFeedback,
-  trackPromptEvolution,
-} from '../utils';
+import { generateFeedback, trackPromptEvolution } from '../utils';
+import { evaluatePrompt } from '../utils/scoring.js';
+
+/** Sync mock evaluator from scoring.js (not the async evaluatePrompt in utils/index.js). */
+interface MockPromptEvalResult {
+  structureScore: number;
+  successProbability: number;
+  effectiveness: number;
+}
 import { level3CodingProblems } from '../../../shared/level3CodingProblems.js';
 import {
   analyzeAiResponseSnippet,
   scoreReasonExplanation,
+  type AiSnippetAnalysis,
+  type ReasonExplanationScore,
 } from '../../../shared/level3CodingAnalyze.js';
+import { apiPath } from '../utils/apiBase';
+
+/** Minimal problem fields used by Level 3 mock scoring */
+interface Level3ProblemMeta {
+  problemId: string;
+  title: string;
+  groundTruthHallucination: boolean;
+  expectedReasonKeywords: string[];
+  antiPatterns: string[];
+}
 
 const API_MODE = (import.meta.env.VITE_API_MODE || 'mock').toLowerCase();
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+
+/** Same URL rules as Level 1/2: apiPath when base is set, else Vite proxy `/api/*`. */
+function resolveHttpApiUrl(path: string): string {
+  const p = path.startsWith('/') ? path : `/${path}`;
+  if ((import.meta.env.VITE_API_BASE_URL || '').trim()) {
+    return apiPath(p);
+  }
+  return `/api${p}`;
+}
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -56,7 +80,10 @@ const mockApi: ApiClient = {
 
   async submitLevel1Prompt(payload: Level1Request): Promise<Level1Response> {
     await wait(900);
-    const evalResult = evaluatePrompt(payload.promptText, 0);
+    const evalResult: MockPromptEvalResult = evaluatePrompt(
+      payload.promptText,
+      0
+    );
     const structureScore = clamp(evalResult.structureScore, 1, 10);
     const successProbability = clamp(evalResult.successProbability, 10, 100);
     const totalTestCases = 5;
@@ -103,7 +130,10 @@ const mockApi: ApiClient = {
   async submitLevel2Prompt(payload: Level2Request): Promise<Level2Response> {
     await wait(800);
     const baseReliability = 0;
-    const evalResult = evaluatePrompt(payload.promptText, baseReliability);
+    const evalResult: MockPromptEvalResult = evaluatePrompt(
+      payload.promptText,
+      baseReliability
+    );
     const structureScore = clamp(evalResult.structureScore, 1, 10);
     const normalizedHistory = payload.previousVersions.map((entry) => ({
       version: entry.version,
@@ -219,7 +249,9 @@ const mockApi: ApiClient = {
     }
 
     const pid = payload.problemId || payload.scenarioId;
-    const problem = level3CodingProblems.find((p) => p.problemId === pid);
+    const problem = level3CodingProblems.find(
+      (p) => p.problemId === pid
+    ) as Level3ProblemMeta | undefined;
     if (!problem) {
       throw new Error('Unknown Level 3 coding problem id.');
     }
@@ -229,13 +261,16 @@ const mockApi: ApiClient = {
       throw new Error('Paste the AI response (Step 2) for analysis.');
     }
 
-    const analysis = analyzeAiResponseSnippet(snippet);
+    const analysis: AiSnippetAnalysis = analyzeAiResponseSnippet(snippet);
     const explanationSource =
       typeof payload.reasonExplanation === 'string' &&
       payload.reasonExplanation.trim()
         ? payload.reasonExplanation
         : (payload.promptText ?? '');
-    const reasonScoring = scoreReasonExplanation(explanationSource, problem);
+    const reasonScoring: ReasonExplanationScore = scoreReasonExplanation(
+      explanationSource,
+      problem
+    );
 
     const gt = !!problem.groundTruthHallucination;
     const userBelief =
@@ -299,14 +334,29 @@ const postJson = async <TResponse>(
   path: string,
   payload: unknown
 ): Promise<TResponse> => {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
+  let response: Response;
+  try {
+    response = await fetch(resolveHttpApiUrl(path), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    throw new Error(
+      'Cannot reach the API server. Run: cd backend && npm run dev (port 3000), then reload.'
+    );
+  }
 
   if (!response.ok) {
-    throw new Error(`API request failed: ${response.status}`);
+    const body = await response.json().catch(() => ({}));
+    const msg =
+      typeof body === 'object' &&
+      body !== null &&
+      'error' in body &&
+      typeof (body as { error: unknown }).error === 'string'
+        ? (body as { error: string }).error
+        : `API request failed: ${response.status}`;
+    throw new Error(msg);
   }
 
   return (await response.json()) as TResponse;
@@ -314,7 +364,7 @@ const postJson = async <TResponse>(
 
 const httpApi: ApiClient = {
   async fetchProblems() {
-    const response = await fetch(`${API_BASE_URL}/problems`);
+    const response = await fetch(resolveHttpApiUrl('/problems'));
     if (!response.ok) {
       throw new Error(`API request failed: ${response.status}`);
     }
@@ -330,14 +380,14 @@ const httpApi: ApiClient = {
     return postJson<Level3Response>('/level3', payload);
   },
   async fetchLeaderboard() {
-    const response = await fetch(`${API_BASE_URL}/leaderboard`);
+    const response = await fetch(resolveHttpApiUrl('/leaderboard'));
     if (!response.ok) {
       throw new Error(`API request failed: ${response.status}`);
     }
     return (await response.json()) as LeaderboardEntry[];
   },
   async fetchAnalytics() {
-    const response = await fetch(`${API_BASE_URL}/analytics`);
+    const response = await fetch(resolveHttpApiUrl('/analytics'));
     if (!response.ok) {
       throw new Error(`API request failed: ${response.status}`);
     }
